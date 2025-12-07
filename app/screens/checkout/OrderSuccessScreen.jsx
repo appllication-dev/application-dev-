@@ -1,18 +1,19 @@
-import React, { useEffect, useContext } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
     Dimensions,
+    Share,
+    Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PremiumBackground from '../../components/PremiumBackground';
-import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
-import Confetti from 'react-native-confetti';
+import Animated, { FadeInDown, FadeInUp, ZoomIn, BounceIn } from 'react-native-reanimated';
 import { CartContext } from '../../../src/context/CardContext';
 import { useCheckout } from '../../../src/context/CheckoutContext';
 import { sendOrderUpdateNotification } from '../../../src/utils/notifications';
@@ -24,37 +25,72 @@ const OrderSuccessScreen = () => {
     const params = useLocalSearchParams();
     const { clearCart } = useContext(CartContext);
     const { resetCheckout } = useCheckout();
-    const confettiRef = React.useRef(null);
+    const [showConfetti, setShowConfetti] = useState(true);
 
-    const orderNumber = params.orderNumber || 'ORD-123456';
+    const orderNumber = params.orderNumber || 'ORD-' + Date.now().toString(36).toUpperCase();
+    const total = params.total || '0.00';
 
     useEffect(() => {
-        // Trigger confetti
-        if (confettiRef.current) {
-            confettiRef.current.startConfetti();
+        // Send notification (wrapped in try-catch for Expo Go)
+        try {
+            sendOrderUpdateNotification(orderNumber, 'confirmed');
+        } catch (error) {
+            console.log('Notification skipped');
         }
 
-        // Send notification
-        sendOrderUpdateNotification(orderNumber, 'confirmed');
-
         // Clear cart and reset checkout
-        clearCart();
-        resetCheckout();
+        if (clearCart) clearCart();
+        if (resetCheckout) resetCheckout();
 
-        // Stop confetti after 3 seconds
+        // Stop confetti after 4 seconds
         const timer = setTimeout(() => {
-            if (confettiRef.current) {
-                confettiRef.current.stopConfetti();
-            }
-        }, 3000);
+            setShowConfetti(false);
+        }, 4000);
 
         return () => clearTimeout(timer);
     }, []);
 
+    const handleShare = async () => {
+        try {
+            await Share.share({
+                message: `I just ordered from Fashion Store! 🛍️\nOrder Number: ${orderNumber}\nTotal: $${total}`,
+                title: 'My Fashion Store Order',
+            });
+        } catch (error) {
+            console.log('Share error:', error);
+        }
+    };
+
+    // Simple confetti effect with animated views
+    const renderConfetti = () => {
+        if (!showConfetti) return null;
+
+        const confettiColors = ['#667eea', '#764ba2', '#4CAF50', '#FF6B6B', '#FFD93D', '#6BCB77'];
+        return (
+            <View style={styles.confettiContainer} pointerEvents="none">
+                {Array.from({ length: 20 }).map((_, i) => (
+                    <Animated.View
+                        key={i}
+                        entering={BounceIn.delay(i * 50).duration(1000)}
+                        style={[
+                            styles.confettiPiece,
+                            {
+                                left: `${Math.random() * 100}%`,
+                                top: `${Math.random() * 50}%`,
+                                backgroundColor: confettiColors[i % confettiColors.length],
+                                transform: [{ rotate: `${Math.random() * 360}deg` }],
+                            },
+                        ]}
+                    />
+                ))}
+            </View>
+        );
+    };
+
     return (
         <PremiumBackground>
             <SafeAreaView style={styles.container}>
-                <Confetti ref={confettiRef} confettiCount={50} timeout={3} />
+                {renderConfetti()}
 
                 <View style={styles.content}>
                     {/* Success Icon */}
@@ -66,7 +102,7 @@ const OrderSuccessScreen = () => {
                             colors={['#4CAF50', '#45a049']}
                             style={styles.iconGradient}
                         >
-                            <Ionicons name="checkmark-circle" size={80} color="#fff" />
+                            <Ionicons name="checkmark" size={60} color="#fff" />
                         </LinearGradient>
                     </Animated.View>
 
@@ -75,7 +111,7 @@ const OrderSuccessScreen = () => {
                         entering={FadeInDown.delay(400).springify()}
                         style={styles.title}
                     >
-                        Order Placed Successfully! 🎉
+                        Order Confirmed! 🎉
                     </Animated.Text>
 
                     <Animated.Text
@@ -85,16 +121,35 @@ const OrderSuccessScreen = () => {
                         Thank you for your purchase!
                     </Animated.Text>
 
-                    {/* Order Number */}
+                    {/* Order Details */}
                     <Animated.View
                         entering={FadeInDown.delay(600).springify()}
-                        style={styles.orderNumberContainer}
+                        style={styles.orderDetailsContainer}
                     >
-                        <Text style={styles.orderNumberLabel}>Order Number</Text>
-                        <Text style={styles.orderNumber}>{orderNumber}</Text>
-                        <Text style={styles.orderNumberHint}>
-                            Save this number to track your order
-                        </Text>
+                        <View style={styles.orderRow}>
+                            <Text style={styles.orderLabel}>Order Number</Text>
+                            <TouchableOpacity
+                                style={styles.copyButton}
+                                onPress={handleShare}
+                            >
+                                <Text style={styles.orderValue}>{orderNumber}</Text>
+                                <Ionicons name="share-outline" size={18} color="#667eea" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.orderRow}>
+                            <Text style={styles.orderLabel}>Total Amount</Text>
+                            <Text style={styles.totalValue}>${total}</Text>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.orderRow}>
+                            <Text style={styles.orderLabel}>Estimated Delivery</Text>
+                            <Text style={styles.orderValue}>3-5 Business Days</Text>
+                        </View>
                     </Animated.View>
 
                     {/* Features */}
@@ -103,33 +158,36 @@ const OrderSuccessScreen = () => {
                         style={styles.featuresContainer}
                     >
                         <View style={styles.featureItem}>
-                            <View style={styles.featureIcon}>
-                                <Ionicons name="mail" size={24} color="#667eea" />
+                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(102,126,234,0.2)' }]}>
+                                <Ionicons name="mail" size={22} color="#667eea" />
                             </View>
                             <View style={styles.featureText}>
-                                <Text style={styles.featureTitle}>Confirmation Email</Text>
+                                <Text style={styles.featureTitle}>Email Confirmation</Text>
                                 <Text style={styles.featureDesc}>Sent to your email</Text>
                             </View>
+                            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
                         </View>
 
                         <View style={styles.featureItem}>
-                            <View style={styles.featureIcon}>
-                                <Ionicons name="cube" size={24} color="#667eea" />
+                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(76,175,80,0.2)' }]}>
+                                <Ionicons name="cube" size={22} color="#4CAF50" />
                             </View>
                             <View style={styles.featureText}>
                                 <Text style={styles.featureTitle}>Free Shipping</Text>
-                                <Text style={styles.featureDesc}>Delivery in 3-5 days</Text>
+                                <Text style={styles.featureDesc}>Tracked delivery</Text>
                             </View>
+                            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
                         </View>
 
                         <View style={styles.featureItem}>
-                            <View style={styles.featureIcon}>
-                                <Ionicons name="shield-checkmark" size={24} color="#667eea" />
+                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(255,107,107,0.2)' }]}>
+                                <Ionicons name="shield-checkmark" size={22} color="#FF6B6B" />
                             </View>
                             <View style={styles.featureText}>
-                                <Text style={styles.featureTitle}>Secure Payment</Text>
-                                <Text style={styles.featureDesc}>100% Protected</Text>
+                                <Text style={styles.featureTitle}>Buyer Protection</Text>
+                                <Text style={styles.featureDesc}>30-day guarantee</Text>
                             </View>
+                            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
                         </View>
                     </Animated.View>
 
@@ -144,6 +202,7 @@ const OrderSuccessScreen = () => {
                                 pathname: '/screens/orders/OrderTrackingScreen',
                                 params: { id: orderNumber }
                             })}
+                            activeOpacity={0.8}
                         >
                             <LinearGradient
                                 colors={['#667eea', '#764ba2']}
@@ -158,7 +217,8 @@ const OrderSuccessScreen = () => {
 
                         <TouchableOpacity
                             style={styles.secondaryButton}
-                            onPress={() => router.push('/(tabs)')}
+                            onPress={() => router.replace('/(tabs)')}
+                            activeOpacity={0.8}
                         >
                             <Text style={styles.secondaryButtonText}>Continue Shopping</Text>
                             <Ionicons name="arrow-forward" size={18} color="#667eea" />
@@ -174,19 +234,29 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    confettiContainer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 10,
+    },
+    confettiPiece: {
+        position: 'absolute',
+        width: 10,
+        height: 10,
+        borderRadius: 2,
+    },
     content: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 30,
+        paddingHorizontal: 24,
     },
     iconContainer: {
-        marginBottom: 30,
+        marginBottom: 24,
     },
     iconGradient: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#4CAF50',
@@ -196,81 +266,91 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
     title: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: '800',
         color: '#fff',
         textAlign: 'center',
-        marginBottom: 12,
+        marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
         color: 'rgba(255,255,255,0.8)',
         textAlign: 'center',
-        marginBottom: 30,
+        marginBottom: 24,
     },
-    orderNumberContainer: {
+    orderDetailsContainer: {
         backgroundColor: 'rgba(255,255,255,0.1)',
         borderRadius: 20,
-        padding: 24,
-        alignItems: 'center',
-        marginBottom: 30,
+        padding: 20,
+        width: '100%',
+        marginBottom: 20,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.2)',
-        width: '100%',
     },
-    orderNumberLabel: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
-        marginBottom: 8,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
+    orderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
     },
-    orderNumber: {
-        fontSize: 24,
-        fontWeight: '800',
+    orderLabel: {
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.7)',
+    },
+    orderValue: {
+        fontSize: 14,
+        fontWeight: '600',
         color: '#fff',
-        marginBottom: 8,
+        marginRight: 8,
     },
-    orderNumberHint: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
-        textAlign: 'center',
+    totalValue: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#4CAF50',
+    },
+    copyButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        marginVertical: 4,
     },
     featuresContainer: {
         width: '100%',
-        marginBottom: 40,
+        marginBottom: 24,
     },
     featureItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.15)',
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     featureIcon: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: 'rgba(102,126,234,0.2)',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: 14,
     },
     featureText: {
         flex: 1,
     },
     featureTitle: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '600',
         color: '#fff',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     featureDesc: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.7)',
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.6)',
     },
     buttonsContainer: {
         width: '100%',
@@ -284,7 +364,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 18,
+        paddingVertical: 16,
         gap: 10,
     },
     primaryButtonText: {
@@ -296,7 +376,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 18,
+        paddingVertical: 16,
         borderRadius: 16,
         backgroundColor: 'rgba(255,255,255,0.1)',
         borderWidth: 2,

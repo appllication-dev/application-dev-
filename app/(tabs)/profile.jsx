@@ -16,13 +16,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as SecureStore from "expo-secure-store";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";
 import { useTheme } from "../../src/context/ThemeContext";
 import { useSettings } from "../../src/context/SettingsContext";
 import { CartContext } from "../../src/context/CardContext";
 import SavedAddresses from "../components/SavedAddresses";
 import PaymentMethods from "../components/PaymentMethods";
-import { useNavigation } from "@react-navigation/native";
 import { sanitizeEmail } from "../../src/utils/helpers";
 import PremiumBackground from "../components/PremiumBackground";
 import { sendNewProductNotification } from "../../src/utils/notifications";
@@ -30,7 +30,7 @@ import { sendNewProductNotification } from "../../src/utils/notifications";
 const { width } = Dimensions.get("window");
 
 const Profile = () => {
-  const navigation = useNavigation();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { colors, toggleTheme, theme } = useTheme();
   const { carts } = React.useContext(CartContext);
@@ -56,9 +56,9 @@ const Profile = () => {
     { id: '2', type: 'Mastercard', number: '**** **** **** 8888', expiry: '09/24', holder: 'John Doe', isDefault: false },
   ]);
 
-  const [selectedOrderTab, setSelectedOrderTab] = useState('all'); // Will be changed to category-based
-  const [selectedCategory, setSelectedCategory] = useState('All'); // Category filter: All, Discount, T-shirt, Hoodie, Hat
-  const [language, setLanguage] = useState('en'); // en or ar
+  const [selectedOrderTab, setSelectedOrderTab] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [language, setLanguage] = useState('en');
 
   const scrollViewRef = useRef(null);
   const ordersRef = useRef(null);
@@ -94,7 +94,7 @@ const Profile = () => {
     id: item.id.toString(),
     name: item.name,
     price: `$${item.price}`,
-    category: item.category, // Add category from cart item
+    category: item.category,
     img: item.image,
     date: new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   }));
@@ -207,14 +207,14 @@ const Profile = () => {
       icon: 'heart',
       label: 'Favorites',
       count: favorites.length,
-      onPress: () => scrollToSection(500) // Approximate scroll position
+      onPress: () => scrollToSection(500)
     },
     {
       id: 4,
       icon: 'receipt',
       label: 'Orders',
       count: userStats.totalOrders,
-      onPress: () => scrollToSection(300) // Approximate scroll position
+      onPress: () => scrollToSection(300)
     },
   ];
 
@@ -318,12 +318,15 @@ const Profile = () => {
   const renderOrderCard = ({ item }) => (
     <TouchableOpacity
       style={styles.orderCard}
-      onPress={() => navigation.navigate('screens/orders/OrderTrackingScreen', {
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        date: item.date,
-        img: item.img
+      onPress={() => router.push({
+        pathname: '/screens/orders/OrderTrackingScreen',
+        params: {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          date: item.date,
+          img: item.img
+        }
       })}
     >
       <Image source={{ uri: item.img }} style={styles.orderImage} />
@@ -394,6 +397,7 @@ const Profile = () => {
     </Animated.View>
   );
 
+  // Guest View
   if (!user) {
     return (
       <PremiumBackground>
@@ -408,14 +412,14 @@ const Profile = () => {
 
           <TouchableOpacity
             style={[styles.authButton, { backgroundColor: '#fff', width: '100%', marginBottom: 15 }]}
-            onPress={() => navigation.navigate('Login')}
+            onPress={() => router.push('/screens/auth/LoginScreen')}
           >
             <Text style={[styles.authButtonText, { color: '#667eea' }]}>Sign In</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.authButton, { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#fff', width: '100%' }]}
-            onPress={() => navigation.navigate('Register')}
+            onPress={() => router.push('/screens/auth/RegisterScreen')}
           >
             <Text style={[styles.authButtonText, { color: '#fff' }]}>Create New Account</Text>
           </TouchableOpacity>
@@ -424,6 +428,7 @@ const Profile = () => {
     );
   }
 
+  // Logged In View
   return (
     <PremiumBackground>
       <View style={styles.container}>
@@ -521,7 +526,7 @@ const Profile = () => {
                       </Text>
                       <TouchableOpacity
                         style={styles.shopNowButton}
-                        onPress={() => navigation.navigate('index')}
+                        onPress={() => router.push('/')}
                       >
                         <Ionicons name="storefront" size={20} color="#fff" />
                         <Text style={styles.shopNowText}>Explore Collection</Text>
@@ -994,7 +999,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-
 
   // Logout Button
   logoutButton: {

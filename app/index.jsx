@@ -21,11 +21,6 @@ export default function Index() {
         return <Redirect href="/screens/OnboardingScreen" />;
     }
 
-    // If user is logged in, go to tabs
-    if (user) {
-        return <Redirect href="/(tabs)" />;
-    }
-
-    // If not logged in, go to login screen
-    return <Redirect href="/screens/auth/LoginScreen" />;
+    // Go to tabs (profile will show guest view if not logged in)
+    return <Redirect href="/(tabs)/profile" />;
 }

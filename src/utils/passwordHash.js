@@ -1,6 +1,6 @@
 /**
- * Simple password hashing utility using SHA-256
- * For production, consider using bcrypt or argon2
+ * Simple password hashing utility for React Native
+ * Uses a basic but consistent hashing approach
  */
 
 /**
@@ -12,31 +12,36 @@ export const hashPassword = async (password) => {
     if (!password) return '';
 
     try {
-        // Create a simple hash using multiple iterations
-        let hash = password;
+        const salt = 'salt_key_2025_secure';
+        const combined = password + salt;
 
-        // Apply multiple rounds of encoding for better security
-        for (let i = 0; i < 1000; i++) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(hash + 'salt_key_2025');
-
-            // Use crypto subtle if available (web/modern environments)
-            if (typeof crypto !== 'undefined' && crypto.subtle) {
-                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            } else {
-                // Fallback for React Native environments
-                // Simple character code transformation
-                hash = btoa(hash + 'salt_key_2025').split('').reverse().join('');
-            }
+        // Simple hash using character codes
+        let hash = 0;
+        for (let i = 0; i < combined.length; i++) {
+            const char = combined.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
         }
 
-        return hash;
+        // Convert to hex string and add some complexity
+        const hexHash = Math.abs(hash).toString(16).padStart(8, '0');
+
+        // Add more entropy by creating multiple passes
+        let finalHash = hexHash;
+        for (let i = 0; i < 3; i++) {
+            let passHash = 0;
+            for (let j = 0; j < finalHash.length; j++) {
+                passHash = ((passHash << 5) - passHash) + finalHash.charCodeAt(j);
+                passHash = passHash & passHash;
+            }
+            finalHash += Math.abs(passHash).toString(16).padStart(8, '0');
+        }
+
+        return 'hash_v1_' + finalHash;
     } catch (error) {
         console.warn('Password hashing failed:', error);
-        // Fallback to base64 encoding if hashing fails
-        return btoa(password + 'fallback_salt');
+        // Return a consistent fallback
+        return 'hash_v1_' + password.split('').map(c => c.charCodeAt(0).toString(16)).join('');
     }
 };
 
@@ -58,6 +63,6 @@ export const verifyPassword = async (password, hash) => {
  */
 export const isHashed = (str) => {
     if (!str) return false;
-    // Simple heuristic: hashed passwords are longer and contain only hex characters or base64
-    return str.length > 50 && /^[a-f0-9]+$|^[A-Za-z0-9+/=]+$/.test(str);
+    // Check if it starts with our hash prefix
+    return str.startsWith('hash_v1_');
 };

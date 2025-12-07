@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -10,6 +10,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     StatusBar,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,13 +19,15 @@ import { useTheme } from '../../../src/context/ThemeContext';
 import { useCheckout } from '../../../src/context/CheckoutContext';
 import PremiumBackground from '../../components/PremiumBackground';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { validateName, validatePhone, validateAddress } from '../../../src/utils/validation';
+import { cleanInput, isInputSafe } from '../../../src/utils/security';
 
 const ShippingScreen = () => {
     const navigation = useNavigation();
     const { colors } = useTheme();
-    const { shippingAddress, setShippingAddress, savedAddresses } = useCheckout();
+    const { currentShippingAddress, setCurrentShippingAddress, savedAddresses } = useCheckout();
 
-    const [form, setForm] = useState(shippingAddress || {
+    const [form, setForm] = useState(currentShippingAddress || {
         fullName: '',
         phoneNumber: '',
         address: '',
@@ -34,30 +37,58 @@ const ShippingScreen = () => {
     });
 
     const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
+
+    // Refs for input navigation
+    const phoneRef = useRef(null);
+    const addressRef = useRef(null);
+    const cityRef = useRef(null);
+    const zipRef = useRef(null);
+    const countryRef = useRef(null);
 
     const validate = () => {
         let valid = true;
         let newErrors = {};
 
-        if (!form.fullName) {
-            newErrors.fullName = 'Full Name is required';
+        // Validate full name
+        const nameResult = validateName(form.fullName);
+        if (!nameResult.isValid) {
+            newErrors.fullName = nameResult.error;
             valid = false;
         }
-        if (!form.phoneNumber) {
-            newErrors.phoneNumber = 'Phone Number is required';
+
+        // Validate phone
+        const phoneResult = validatePhone(form.phoneNumber);
+        if (!phoneResult.isValid) {
+            newErrors.phoneNumber = phoneResult.error;
             valid = false;
         }
-        if (!form.address) {
-            newErrors.address = 'Address is required';
+
+        // Validate address
+        if (!form.address || form.address.trim().length < 5) {
+            newErrors.address = 'Please enter a valid address';
             valid = false;
         }
-        if (!form.city) {
+
+        // Validate city
+        if (!form.city || form.city.trim().length < 2) {
             newErrors.city = 'City is required';
             valid = false;
         }
-        if (!form.zipCode) {
-            newErrors.zipCode = 'Zip Code is required';
+
+        // Validate zip code
+        if (!form.zipCode || !/^[\w\s\-]{3,10}$/.test(form.zipCode.trim())) {
+            newErrors.zipCode = 'Invalid zip code';
             valid = false;
+        }
+
+        // Check for injection attempts
+        const fieldsToCheck = [form.fullName, form.address, form.city, form.country];
+        for (const field of fieldsToCheck) {
+            if (field && !isInputSafe(field)) {
+                Alert.alert('Security Warning', 'Invalid characters detected in your input.');
+                return false;
+            }
         }
 
         setErrors(newErrors);
@@ -66,15 +97,32 @@ const ShippingScreen = () => {
 
     const handleNext = () => {
         if (validate()) {
-            setShippingAddress(form);
+            setLoading(true);
+            // Sanitize all inputs before saving
+            const sanitizedForm = {
+                fullName: cleanInput(form.fullName),
+                phoneNumber: cleanInput(form.phoneNumber),
+                address: cleanInput(form.address),
+                city: cleanInput(form.city),
+                zipCode: cleanInput(form.zipCode),
+                country: cleanInput(form.country),
+            };
+            setCurrentShippingAddress(sanitizedForm);
+            setLoading(false);
             navigation.navigate('PaymentScreen');
-        } else {
-            Alert.alert('Error', 'Please fill in all required fields');
         }
     };
 
     const handleUseSavedAddress = (address) => {
         setForm(address);
+        setErrors({});
+    };
+
+    const handleInputChange = (field, text) => {
+        setForm({ ...form, [field]: text });
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: null }));
+        }
     };
 
     const renderInput = (label, field, placeholder, keyboardType = 'default') => (
@@ -369,7 +417,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 5,
-        marginBottom:50
+        marginBottom: 50
     },
     nextButtonText: {
         color: '#ffffffff',

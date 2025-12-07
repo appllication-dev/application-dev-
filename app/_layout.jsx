@@ -7,6 +7,11 @@ import { SettingsProvider } from "../src/context/SettingsContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useEffect } from "react";
 import { registerForPushNotificationsAsync } from "../src/utils/notifications";
+import { Platform } from "react-native";
+
+// Note: StripePaymentProvider is only used on native platforms
+// Uncomment when building for iOS/Android:
+// import { StripePaymentProvider } from "../src/context/StripeContext";
 
 export default function RootLayout() {
    useEffect(() => {

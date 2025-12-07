@@ -1,29 +1,83 @@
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, StatusBar, Dimensions } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, StatusBar, Dimensions, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CartProduct from "../components/CartProduct";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { CartContext } from "../../src/context/CardContext";
 import { useTheme } from "../../src/context/ThemeContext";
+import { useAuth } from "../../src/context/AuthContext";
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import PremiumBackground from "../components/PremiumBackground";
 import { BorderRadius } from "../../constants/theme";
+import { rateLimiters } from "../../src/utils/security";
 
 const { width } = Dimensions.get('window');
 
 const Basket = () => {
   const { colors, theme } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const { carts, totalPrice, deleteItemFromCart } = useContext(CartContext);
+  const [loading, setLoading] = useState(false);
 
   const shippingCost = 0;
   const tax = (totalPrice * 0.1).toFixed(2); // 10% tax
   const finalTotal = (parseFloat(totalPrice) + parseFloat(tax) + shippingCost).toFixed(2);
 
   const handleCheckout = () => {
-    navigation.navigate('ShippingScreen');
+    // Rate limiting check
+    if (!rateLimiters.api.isAllowed('checkout_attempt')) {
+      Alert.alert(
+        "Please Wait",
+        "You're proceeding too quickly. Please wait a moment."
+      );
+      return;
+    }
+
+    // Check if cart has items
+    if (!carts || carts.length === 0) {
+      Alert.alert("Empty Cart", "Please add items to your cart first.");
+      return;
+    }
+
+    // Validate cart items (check for valid prices and quantities)
+    const invalidItems = carts.filter(item =>
+      !item.price || item.price <= 0 ||
+      (item.quantity && item.quantity <= 0)
+    );
+
+    if (invalidItems.length > 0) {
+      Alert.alert("Invalid Items", "Some items in your cart have invalid data. Please remove and re-add them.");
+      return;
+    }
+
+    // Check if user is logged in
+    if (!user) {
+      Alert.alert(
+        "Sign In Required",
+        "Please go to your profile and sign in to proceed with checkout",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Go to Profile",
+            onPress: () => {
+              // Navigate to profile tab where guest screen will show sign in option
+              navigation.getParent()?.navigate('profile');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    // User is logged in and cart is valid, proceed to checkout
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      navigation.navigate('ShippingScreen');
+    }, 300);
   };
 
   return (

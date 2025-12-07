@@ -77,6 +77,19 @@ const ProductsDeltScreen = () => {
                         <Feather name="heart" size={22} color="#1A1A1A" />
                     </TouchableOpacity>
                 </View>
+
+                {/* 3D View Button - Coming Soon */}
+                <TouchableOpacity
+                    style={styles.view3DButton}
+                    onPress={() => Alert.alert(
+                        "360° View",
+                        "This feature is coming soon! 🚀\n\nWe're working on adding immersive 360° product views.",
+                        [{ text: "OK", style: "default" }]
+                    )}
+                >
+                    <Feather name="box" size={18} color="#FFFFFF" />
+                    <Text style={styles.view3DText}>360°</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Content Sheet */}
@@ -202,7 +215,11 @@ const styles = StyleSheet.create({
         height: "100%",
     },
     imageOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         backgroundColor: "rgba(0,0,0,0.02)",
     },
     topBar: {
@@ -235,6 +252,29 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1A1A1A',
         marginHorizontal: 12,
+    },
+    view3DButton: {
+        position: 'absolute',
+        bottom: 60,
+        right: 20,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 25,
+        gap: 6,
+        zIndex: 5,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    view3DText: {
+        color: '#FFFFFF',
+        fontWeight: '700',
+        fontSize: 14,
     },
     contentContainer: {
         flex: 1,

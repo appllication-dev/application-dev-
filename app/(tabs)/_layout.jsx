@@ -127,8 +127,8 @@ const AppContent = () => {
                     headerShown: false,
                     tabBarStyle: ((route) => {
                         const routeName = getFocusedRouteNameFromRoute(route) ?? ""
-                        // Hide tab bar on Login/Register screens OR if user is not logged in (showing welcome screen)
-                        if (routeName === "Login" || routeName === "Register" || !user) {
+                        // Hide tab bar ONLY on Login/Register screens (allow guest browsing)
+                        if (routeName === "Login" || routeName === "Register") {
                             return { display: "none" }
                         }
                         return {

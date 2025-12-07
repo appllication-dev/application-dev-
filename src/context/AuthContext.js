@@ -16,10 +16,6 @@ export function AuthProvider({ children }) {
         const raw = await SecureStore.getItemAsync(USER_KEY);
         if (raw) {
           setUserState(JSON.parse(raw));
-        } else {
-          // No user logged in. We do NOT set a default user anymore to force login/register
-          // or we can keep a "guest" mode if desired, but user asked for login/register flow.
-          // For now, let's keep it null so we can show login screen.
         }
       } catch (e) {
         console.warn('Failed to load user from SecureStore', e);
@@ -51,17 +47,20 @@ export function AuthProvider({ children }) {
     const foundUser = users.find(u => u.email === email);
 
     if (foundUser) {
-      // Check if password matches (handle both hashed and plain text for migration)
+      console.log('Found user:', foundUser.email);
+
       let passwordMatches = false;
 
+      // Check if password is in new hash format
       if (isHashed(foundUser.password)) {
-        // Password is hashed, verify it
+        console.log('Password is hashed (new format), verifying...');
         passwordMatches = await verifyPassword(password, foundUser.password);
       } else {
-        // Legacy plain text password, check directly
+        // Old format or plain text - try direct comparison first
+        console.log('Trying direct password comparison...');
         passwordMatches = foundUser.password === password;
 
-        // If match, update to hashed version
+        // If direct match, update to new hash format
         if (passwordMatches) {
           const hashedPwd = await hashPassword(password);
           foundUser.password = hashedPwd;
@@ -70,20 +69,38 @@ export function AuthProvider({ children }) {
           if (userIndex !== -1) {
             allUsers[userIndex] = foundUser;
             await saveUsersDB(allUsers);
+            console.log('Updated password to new hash format');
           }
         }
       }
 
       if (passwordMatches) {
-        // Remove password from session state for security
         const { password: _, ...userSession } = foundUser;
         setUserState(userSession);
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(userSession));
         setLoading(false);
         return true;
+      } else {
+        console.log('Password does not match');
       }
+    } else {
+      console.log('User not found');
     }
     return false;
+  };
+
+  // Function to clear all users (for fixing old data issues)
+  const clearAllUsers = async () => {
+    try {
+      await SecureStore.deleteItemAsync(USERS_DB_KEY);
+      await SecureStore.deleteItemAsync(USER_KEY);
+      setUserState(null);
+      console.log('All users cleared');
+      return true;
+    } catch (e) {
+      console.warn('Failed to clear users', e);
+      return false;
+    }
   };
 
   const register = async (name, email, password) => {
@@ -98,9 +115,11 @@ export function AuthProvider({ children }) {
     users.push(newUser);
     await saveUsersDB(users);
 
-    // Auto login after register? Or redirect to login? 
-    // User requested "reset settings for new user", which implies clean slate.
-    // Let's NOT auto-login, but return true so UI can navigate to Login.
+    // Auto login after successful registration
+    const { password: _, ...userSession } = newUser;
+    setUserState(userSession);
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(userSession));
+
     return true;
   };
 
@@ -131,7 +150,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUser, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser, clearAllUsers, loading }}>
       {children}
     </AuthContext.Provider>
   );
