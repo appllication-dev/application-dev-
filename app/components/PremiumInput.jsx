@@ -48,7 +48,7 @@ const PremiumInput = ({
 
     const containerStyle = useAnimatedStyle(() => ({
         borderColor: error
-            ? '#EF4444'
+            ? '#D97706'
             : success
                 ? '#10B981'
                 : borderColor.value === 1
@@ -121,7 +121,7 @@ const PremiumInput = ({
 
                 {error && (
                     <View style={styles.statusIcon}>
-                        <Feather name="alert-circle" size={20} color="#EF4444" />
+                        <Feather name="alert-circle" size={20} color="#D97706" />
                     </View>
                 )}
             </Animated.View>
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     errorText: {
-        color: '#EF4444',
+        color: '#D97706',
         fontSize: 13,
         marginTop: 6,
         marginLeft: 16,

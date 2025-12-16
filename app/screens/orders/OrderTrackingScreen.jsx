@@ -6,11 +6,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import PremiumBackground from '../../components/PremiumBackground';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
+import { useTheme } from '../../../src/context/ThemeContext';
+
 const { width } = Dimensions.get('window');
 
 const OrderTrackingScreen = () => {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { colors, theme } = useTheme();
+    const isDark = theme === 'dark';
     const [currentStep, setCurrentStep] = useState(2); // 0: Placed, 1: Processing, 2: Shipped, 3: Delivered
 
     // Mock Data based on params or default
@@ -36,39 +40,39 @@ const OrderTrackingScreen = () => {
     return (
         <PremiumBackground>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
+                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Track Order</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Track Order</Text>
                 <View style={{ width: 40 }} />
             </View>
 
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
                 {/* Order Summary Card */}
-                <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.card}>
+                <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <View style={styles.orderHeader}>
                         <View>
-                            <Text style={styles.orderId}>Order {order.id}</Text>
-                            <Text style={styles.orderDate}>{order.date}</Text>
+                            <Text style={[styles.orderId, { color: colors.text }]}>Order {order.id}</Text>
+                            <Text style={[styles.orderDate, { color: colors.textSecondary }]}>{order.date}</Text>
                         </View>
                         <View style={styles.statusBadge}>
                             <Text style={styles.statusText}>{order.status}</Text>
                         </View>
                     </View>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
                     <View style={styles.row}>
-                        <Text style={styles.label}>Tracking Number</Text>
-                        <Text style={styles.value}>{order.trackingNumber}</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Tracking Number</Text>
+                        <Text style={[styles.value, { color: colors.text }]}>{order.trackingNumber}</Text>
                     </View>
                     <View style={styles.row}>
-                        <Text style={styles.label}>Total Amount</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Total Amount</Text>
                         <Text style={styles.totalPrice}>{order.total}</Text>
                     </View>
                 </Animated.View>
 
                 {/* Tracking Timeline */}
                 <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.timelineContainer}>
-                    <Text style={styles.sectionTitle}>Timeline</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Timeline</Text>
                     <View style={styles.timeline}>
                         {steps.map((step, index) => {
                             const isActive = index <= currentStep;
@@ -77,16 +81,24 @@ const OrderTrackingScreen = () => {
                             return (
                                 <View key={index} style={styles.timelineItem}>
                                     <View style={styles.timelineLeft}>
-                                        <View style={[styles.timelineIcon, isActive && styles.timelineIconActive]}>
-                                            <Ionicons name={step.icon} size={20} color={isActive ? '#fff' : 'rgba(255,255,255,0.3)'} />
+                                        <View style={[
+                                            styles.timelineIcon,
+                                            isActive && styles.timelineIconActive,
+                                            !isActive && { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderColor: colors.border }
+                                        ]}>
+                                            <Ionicons name={step.icon} size={20} color={isActive ? '#fff' : colors.textSecondary} />
                                         </View>
                                         {!isLast && (
-                                            <View style={[styles.timelineLine, isActive && index < currentStep && styles.timelineLineActive]} />
+                                            <View style={[
+                                                styles.timelineLine,
+                                                isActive && index < currentStep && styles.timelineLineActive,
+                                                (!isActive || index >= currentStep) && { backgroundColor: colors.border }
+                                            ]} />
                                         )}
                                     </View>
                                     <View style={styles.timelineContent}>
-                                        <Text style={[styles.stepTitle, isActive && styles.stepTitleActive]}>{step.title}</Text>
-                                        <Text style={styles.stepDate}>{step.date}</Text>
+                                        <Text style={[styles.stepTitle, isActive && styles.stepTitleActive, !isActive && { color: colors.textSecondary }, isActive && { color: colors.text }]}>{step.title}</Text>
+                                        <Text style={[styles.stepDate, { color: colors.textSecondary }]}>{step.date}</Text>
                                     </View>
                                 </View>
                             );
@@ -96,16 +108,16 @@ const OrderTrackingScreen = () => {
 
                 {/* Items List */}
                 <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.itemsContainer}>
-                    <Text style={styles.sectionTitle}>Items ({order.items.length})</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Items ({order.items.length})</Text>
                     {order.items.map((item, index) => (
-                        <View key={index} style={styles.itemCard}>
+                        <View key={index} style={[styles.itemCard, { backgroundColor: colors.card }]}>
                             <Image
                                 source={item.image ? { uri: item.image } : { uri: 'https://via.placeholder.com/150' }}
-                                style={styles.itemImage}
+                                style={[styles.itemImage, { backgroundColor: colors.border }]}
                             />
                             <View style={styles.itemInfo}>
-                                <Text style={styles.itemName}>{item.name}</Text>
-                                <Text style={styles.itemQty}>Qty: {item.qty}</Text>
+                                <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
+                                <Text style={[styles.itemQty, { color: colors.textSecondary }]}>Qty: {item.qty}</Text>
                                 <Text style={styles.itemPrice}>{item.price}</Text>
                             </View>
                         </View>
@@ -114,8 +126,8 @@ const OrderTrackingScreen = () => {
 
                 {/* Action Buttons */}
                 <Animated.View entering={FadeInUp.delay(400).springify()} style={styles.footer}>
-                    <TouchableOpacity style={styles.outlineButton}>
-                        <Text style={styles.outlineButtonText}>Report Issue</Text>
+                    <TouchableOpacity style={[styles.outlineButton, { borderColor: colors.text }]}>
+                        <Text style={[styles.outlineButtonText, { color: colors.text }]}>Report Issue</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.primaryButton}>
                         <Text style={styles.primaryButtonText}>Confirm Delivery</Text>
@@ -177,13 +189,13 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.6)',
     },
     statusBadge: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#D4AF37', // Gold
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 10,
     },
     statusText: {
-        color: '#fff',
+        color: '#0B1121', // Navy
         fontSize: 12,
         fontWeight: '700',
     },
@@ -207,7 +219,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     totalPrice: {
-        color: '#667eea',
+        color: '#D4AF37', // Gold
         fontSize: 18,
         fontWeight: '700',
     },
@@ -308,7 +320,7 @@ const styles = StyleSheet.create({
     itemPrice: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#667eea',
+        color: '#D4AF37', // Gold
     },
     footer: {
         flexDirection: 'row',
@@ -333,11 +345,11 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 15,
         borderRadius: 15,
-        backgroundColor: '#667eea',
+        backgroundColor: '#D4AF37', // Gold
         alignItems: 'center',
     },
     primaryButtonText: {
-        color: '#fff',
+        color: '#0B1121', // Navy
         fontWeight: '600',
         fontSize: 16,
     },

@@ -1,19 +1,25 @@
-import { Redirect } from "expo-router";
-import { useAuth } from "../src/context/AuthContext";
+import { Redirect, useRouter, useSegments, SplashScreen } from "expo-router";
 import { useSettings } from "../src/context/SettingsContext";
-import { View, ActivityIndicator } from "react-native";
+import { useAuth } from "../src/context/AuthContext";
+import { useEffect } from "react";
 
 export default function Index() {
-    const { user, loading: authLoading } = useAuth();
     const { isFirstLaunch } = useSettings();
+    const { user, loading } = useAuth();
+    const router = useRouter();
+    const segments = useSegments();
 
-    // Show loading if auth is loading OR first launch check is pending
-    if (authLoading || isFirstLaunch === null) {
-        return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                <ActivityIndicator size="large" color="#6366F1" />
-            </View>
-        );
+    // Navigation is handled explicitly by screens (Login, Register, etc.)
+    // We remove the automatic effect here to prevent race conditions during login.
+    useEffect(() => {
+        if (!loading) {
+            SplashScreen.hideAsync();
+        }
+    }, [loading]);
+
+    // If loading, render nothing (fast startup, no loading screen)
+    if (loading) {
+        return null;
     }
 
     // If first launch, go to onboarding
@@ -21,6 +27,7 @@ export default function Index() {
         return <Redirect href="/screens/OnboardingScreen" />;
     }
 
-    // Go to tabs (profile will show guest view if not logged in)
-    return <Redirect href="/(tabs)/profile" />;
+    // Go to tabs (home page)
+    return <Redirect href="/(tabs)" />;
 }
+

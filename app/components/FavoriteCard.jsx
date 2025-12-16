@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -38,7 +39,7 @@ const FavoriteCard = ({ item, index }) => {
         <Animated.View
             entering={FadeInDown.delay(index * 100).springify()}
             exiting={FadeOutRight.duration(300)}
-            style={[styles.container, { backgroundColor: colors.card }]}
+            style={[styles.container, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
         >
             <TouchableOpacity
                 style={styles.cardContent}
@@ -50,9 +51,10 @@ const FavoriteCard = ({ item, index }) => {
                     <Image
                         source={{ uri: item.image }}
                         style={styles.image}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        transition={500}
                     />
-                    <View style={[styles.priceBadge, { backgroundColor: colors.primary }]}>
+                    <View style={[styles.priceBadge, { backgroundColor: '#1A1A1A' }]}>
                         <Text style={styles.priceText}>${item.price}</Text>
                     </View>
                 </View>
@@ -73,19 +75,19 @@ const FavoriteCard = ({ item, index }) => {
             {/* Action Buttons */}
             <View style={styles.actionsContainer}>
                 <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                    style={[styles.actionButton, { backgroundColor: '#D4AF37' }]}
                     onPress={handleAddToCart}
                     activeOpacity={0.8}
                 >
-                    <Feather name="shopping-cart" size={18} color="#FFFFFF" />
+                    <Feather name="shopping-cart" size={16} color={colors.textInverse} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.actionButton, styles.removeButton, { backgroundColor: colors.cardSecondary }]}
+                    style={[styles.actionButton, styles.removeButton, { backgroundColor: colors.cardSecondary, borderColor: '#D4AF37' }]}
                     onPress={handleRemove}
                     activeOpacity={0.8}
                 >
-                    <FontAwesome name="heart" size={18} color="#FF6B6B" />
+                    <FontAwesome name="heart" size={16} color="#D4AF37" />
                 </TouchableOpacity>
             </View>
         </Animated.View>
@@ -179,7 +181,7 @@ const styles = StyleSheet.create({
     },
     removeButton: {
         borderWidth: 1,
-        borderColor: '#FF6B6B',
+        // borderColor handled inline
     },
 });
 

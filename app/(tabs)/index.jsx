@@ -1,57 +1,110 @@
-import { Text, View, FlatList, TouchableOpacity, StyleSheet, Modal, Dimensions } from "react-native";
+import { Text, View, FlatList, TouchableOpacity, StyleSheet, Modal, Dimensions, Platform, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Feather from 'react-native-vector-icons/Feather';
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { Feather } from '@expo/vector-icons';
 import Category from "../components/category";
 import ProductCard from "../components/productCard";
 import NoResults from "../components/NoResults";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import data from "../data/data";
 import { useTheme } from "../../src/context/ThemeContext";
 import { useFavorites } from "../../src/context/FavoritesContext";
+import { useAuth } from "../../src/context/AuthContext";
+import { storage } from "../../src/utils/storage";
+import { sanitizeEmail } from "../../src/utils/helpers";
+
 import { BorderRadius, Spacing, FontSize } from "../../constants/theme";
 import PremiumBackground from "../components/PremiumBackground";
 import { LinearGradient } from 'expo-linear-gradient';
-import SkeletonProduct from "../components/SkeletonProduct";
-import { useRouter } from "expo-router";
+import ProductSkeleton from "../components/ProductSkeleton";
+import { useRouter, useFocusEffect } from "expo-router";
+import { getProducts as fetchProducts } from "../../src/services/firestoreProducts";
 import SearchBar from "../components/SearchBar";
+import { useTranslation } from "../../src/hooks/useTranslation";
+import CoolLoader from "../components/CoolLoader";
+import { useQuery } from '@tanstack/react-query';
+import { RevolutionTheme } from "../../src/theme/RevolutionTheme";
 
 const { width } = Dimensions.get('window');
 
 const MyScreen = () => {
-    const { colors } = useTheme();
+    const { colors, theme } = useTheme();
     const { toggleFavorite } = useFavorites();
+    const { user } = useAuth();
     const router = useRouter();
+    const { t } = useTranslation();
+    const isDark = theme === 'dark';
 
-    const categories = ['All', 'Discount', 'T-shirt', 'Hoodie', 'Hat'];
+    const categories = [
+        { name: 'All', icon: 'border-all' },
+        { name: 'Discount', icon: 'percentage' },
+        { name: 'T-shirt', icon: 'tshirt' },
+        { name: 'Hoodie', icon: 'user-astronaut' },
+        { name: 'Hat', icon: 'hard-hat' }
+    ];
     const popularSearches = ["T-shirt", "Shoes", "Hoodie", "Watch", "Bag", "Jacket"];
 
     const [selectedCategory, setSelectedCategory] = useState('All');
-    const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearchModal, setShowSearchModal] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [profileImage, setProfileImage] = useState(null);
 
-    useEffect(() => {
-        // Simulate data loading
-        const timer = setTimeout(() => {
-            setProducts(data.products);
-            setIsLoading(false);
-        }, 2000);
-        return () => clearTimeout(timer);
-    }, []);
+    // Dynamic Theme Colors
+    const themeBg = isDark ? RevolutionTheme.colors.background : RevolutionTheme.colors.backgroundLight;
+    const themeText = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
+    const themeTextSecondary = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
+    const themeCard = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
+    const themeBorder = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
+    const themeIconBg = isDark ? RevolutionTheme.colors.glass : 'rgba(212, 175, 55, 0.08)';
+
+    // Load Profile Image
+    useFocusEffect(
+        useCallback(() => {
+            const loadProfileImage = async () => {
+                if (user) {
+                    try {
+                        const userImageKey = `profile_image_${sanitizeEmail(user.email)}`;
+                        const savedUri = await storage.getItem(userImageKey);
+                        if (savedUri) {
+                            setProfileImage(savedUri);
+                        } else {
+                            setProfileImage(user.photoURL);
+                        }
+                    } catch (e) {
+                        console.log("Error loading header image", e);
+                    }
+                } else {
+                    setProfileImage(null);
+                }
+            };
+            loadProfileImage();
+        }, [user])
+    );
+
+    const { data: products = [], isLoading, refetch } = useQuery({
+        queryKey: ['products'],
+        queryFn: async () => {
+            const result = await fetchProducts();
+            if (result.success) {
+                return result.products;
+            }
+            throw new Error("Failed to fetch products");
+        },
+        staleTime: Infinity,
+        cacheTime: 1000 * 60 * 60 * 24,
+    });
+
+    useFocusEffect(
+        useCallback(() => {
+            refetch();
+        }, [])
+    );
 
     const handleLike = (productId) => {
         const product = products.find(p => p.id === productId);
         if (product) {
             toggleFavorite(product);
         }
-        setProducts(prevProducts =>
-            prevProducts.map(product =>
-                product.id === productId
-                    ? { ...product, isLiked: !product.isLiked }
-                    : product
-            )
-        );
     };
 
     const displayedProducts = useMemo(() => {
@@ -72,53 +125,70 @@ const MyScreen = () => {
         return filtered;
     }, [products, selectedCategory, searchQuery]);
 
-    const renderHeader = () => (
-        <>
-            {/* Header */}
+    const handleSeeAll = () => {
+        setSearchQuery('');
+        setSelectedCategory('All');
+    };
+
+    // Sticky Header Component
+    const StickyHeader = () => (
+        <View style={[styles.headerContainer, { backgroundColor: isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255, 253, 245, 0.9)', borderBottomColor: themeBorder, borderBottomWidth: 1 }]}>
             <View style={styles.headerRow}>
                 <TouchableOpacity
-                    style={styles.iconButton}
+                    style={[styles.iconButton, { backgroundColor: themeIconBg, borderColor: themeBorder }]}
                     onPress={() => setShowSearchModal(true)}
                 >
-                    <Feather name="search" size={22} color="#fff" />
+                    <Feather name="search" size={20} color={RevolutionTheme.colors.primary} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push("/screens/OnboardingScreen")}>
-                    <Text style={styles.headerTitle}>FUNNY SHOP</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.iconButton}
-                    onPress={() => router.push("/screens/NotificationsScreen")}
-                >
-                    <Feather name="bell" size={22} color="#fff" />
-                    <View style={styles.notificationDot} />
-                </TouchableOpacity>
-            </View>
 
-            {/* Banner */}
-            <View style={styles.bannerWrapper}>
+                <View>
+                    <Text style={[styles.headerTitle, { color: RevolutionTheme.colors.primaryDark }]}>{t('shopName')}</Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <TouchableOpacity
+                        style={[styles.iconButton, { backgroundColor: themeIconBg, borderColor: themeBorder }]}
+                        onPress={() => router.push("/screens/NotificationsScreen")}
+                    >
+                        <Feather name="bell" size={20} color={RevolutionTheme.colors.primary} />
+                        <View style={styles.notificationDot} />
+                    </TouchableOpacity>
+
+                    {user && (
+                        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
+                            <Image
+                                source={profileImage ? { uri: profileImage } : { uri: "https://via.placeholder.com/150" }}
+                                style={styles.headerAvatar}
+                            />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+        </View>
+    );
+
+    const ListHeader = () => (
+        <>
+            {/* Luxury Banner */}
+            <View style={[styles.bannerWrapper, { backgroundColor: themeCard, borderColor: themeBorder, borderWidth: 1, marginTop: 10 }]}>
                 <LinearGradient
-                    colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
+                    colors={isDark ? ['#1A1A1A', '#000'] : ['#FFF8E7', '#FFFDF5']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.bannerContainer}
-                >
+                    style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.bannerContainer}>
                     <View style={styles.bannerLeft}>
-                        <View style={styles.bannerBadge}>
-                            <Text style={styles.bannerBadgeText}>On Any Amount</Text>
+                        <View style={[styles.bannerBadge, { backgroundColor: RevolutionTheme.colors.primaryDark }]}>
+                            <Text style={styles.bannerBadgeText}>{t('onAnyAmount')}</Text>
                         </View>
-                        <Text style={styles.bannerDiscount}>50 %</Text>
-                        <Text style={styles.bannerOffText}>OFF</Text>
-                        <TouchableOpacity
-                            style={styles.bannerButton}
-                            onPress={() => router.push("/screens/OnboardingScreen")}
-                        >
-                            <Text style={styles.bannerButtonText}>View Intro</Text>
-                        </TouchableOpacity>
+                        <Text style={[styles.bannerDiscount, { color: RevolutionTheme.colors.primary }]}>50 %</Text>
+                        <Text style={[styles.bannerOffText, { color: themeTextSecondary }]}>{t('off')}</Text>
                     </View>
                     <View style={styles.bannerRight}>
-                        <Text style={styles.bannerEmoji}>👕</Text>
+                        <Text style={styles.bannerEmoji}>🧥</Text>
                     </View>
-                </LinearGradient>
+                </View>
             </View>
 
             {/* Categories */}
@@ -132,108 +202,117 @@ const MyScreen = () => {
                             setSelectedCategory={setSelectedCategory}
                         />
                     )}
-                    keyExtractor={(item) => item}
+                    keyExtractor={(item) => item.name}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                 />
             </View>
 
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>New Arrival</Text>
-                <TouchableOpacity>
-                    <Text style={styles.viewAll}>See all</Text>
+                <Text style={[styles.sectionTitle, { color: themeText }]}>{t('newArrival')}</Text>
+                <TouchableOpacity onPress={handleSeeAll}>
+                    <Text style={[styles.viewAll, { color: RevolutionTheme.colors.primary }]}>{t('seeAll')}</Text>
                 </TouchableOpacity>
             </View>
         </>
     );
 
     return (
-        <PremiumBackground>
-            <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, backgroundColor: themeBg }}>
+            {/* Background Gradient for Cream Mode */}
+            {!isDark && (
+                <LinearGradient
+                    colors={RevolutionTheme.colors.gradient.cream}
+                    style={StyleSheet.absoluteFill}
+                />
+            )}
+            {/* Background for Dark Mode */}
+            {isDark && (
+                <PremiumBackground style={StyleSheet.absoluteFill} />
+            )}
+
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+                <StickyHeader />
+
                 {/* Search Modal */}
                 <Modal
                     visible={showSearchModal}
-                    animationType="slide"
+                    animationType="fade"
                     transparent={true}
                     onRequestClose={() => setShowSearchModal(false)}
                 >
-                    <View style={styles.modalOverlay}>
-                        <View style={styles.modalContent}>
-                            <SafeAreaView style={{ flex: 1 }}>
-                                {/* Modal Header */}
-                                <View style={styles.searchHeader}>
-                                    <View style={{ flex: 1 }}>
-                                        <SearchBar
-                                            value={searchQuery}
-                                            onChangeText={setSearchQuery}
-                                            placeholder="Search products..."
-                                            autoFocus={true}
-                                        />
-                                    </View>
-                                    <TouchableOpacity
-                                        style={styles.closeButton}
-                                        onPress={() => setShowSearchModal(false)}
-                                    >
-                                        <Text style={styles.closeButtonText}>Cancel</Text>
-                                    </TouchableOpacity>
+                    <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.95)' : 'rgba(255, 253, 245, 0.98)' }]}>
+                        <SafeAreaView style={{ flex: 1 }}>
+                            {/* Modal Header */}
+                            <View style={[styles.searchHeader, { borderBottomColor: themeBorder }]}>
+                                <View style={{ flex: 1 }}>
+                                    <SearchBar
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                        placeholder={t('searchProducts')}
+                                        autoFocus={true}
+                                    />
                                 </View>
+                                <TouchableOpacity
+                                    style={styles.closeButton}
+                                    onPress={() => setShowSearchModal(false)}
+                                >
+                                    <Text style={[styles.closeButtonText, { color: themeText }]}>{t('cancel')}</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                                {/* Search Content */}
-                                {searchQuery.trim() === '' ? (
-                                    <View style={styles.popularSearchContainer}>
-                                        <Text style={styles.popularTitle}>Popular Searches</Text>
-                                        <View style={styles.tagsContainer}>
-                                            {popularSearches.map((tag, index) => (
-                                                <TouchableOpacity
-                                                    key={index}
-                                                    style={styles.tag}
-                                                    onPress={() => setSearchQuery(tag)}
-                                                >
-                                                    <Text style={styles.tagText}>{tag}</Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
+                            {/* Search Content */}
+                            {searchQuery.trim() === '' ? (
+                                <View style={styles.popularSearchContainer}>
+                                    <Text style={[styles.popularTitle, { color: RevolutionTheme.colors.primary }]}>{t('popularSearches')}</Text>
+                                    <View style={styles.tagsContainer}>
+                                        {popularSearches.map((tag, index) => (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={[styles.tag, { backgroundColor: themeCard, borderColor: themeBorder }]}
+                                                onPress={() => setSearchQuery(tag)}
+                                            >
+                                                <Text style={[styles.tagText, { color: themeText }]}>{tag}</Text>
+                                            </TouchableOpacity>
+                                        ))}
                                     </View>
-                                ) : (
-                                    <>
-                                        <View style={styles.resultsHeader}>
-                                            <Text style={styles.resultsCount}>
-                                                Found {displayedProducts.length} results
-                                            </Text>
-                                        </View>
-                                        <FlatList
-                                            data={displayedProducts}
-                                            numColumns={2}
-                                            keyExtractor={(item) => item.id.toString()}
-                                            contentContainerStyle={styles.searchResults}
-                                            columnWrapperStyle={displayedProducts.length > 0 ? styles.columnWrapper : null}
-                                            renderItem={({ item }) => (
+                                </View>
+                            ) : (
+                                <>
+                                    <View style={[styles.resultsHeader, { borderBottomColor: themeBorder }]}>
+                                        <Text style={[styles.resultsCount, { color: themeTextSecondary }]}>
+                                            {t('foundResults', { count: displayedProducts.length })}
+                                        </Text>
+                                    </View>
+                                    <FlatList
+                                        data={displayedProducts}
+                                        numColumns={2}
+                                        keyExtractor={(item) => item.id.toString()}
+                                        contentContainerStyle={styles.searchResults}
+                                        columnWrapperStyle={displayedProducts.length > 0 ? styles.columnWrapper : null}
+                                        renderItem={({ item }) => (
+                                            <View style={{ width: '48%' }}>
                                                 <ProductCard
                                                     item={item}
                                                     isLiked={item.isLiked}
                                                     onLike={handleLike}
                                                 />
-                                            )}
-                                            ListEmptyComponent={<NoResults searchQuery={searchQuery} />}
-                                        />
-                                    </>
-                                )}
-                            </SafeAreaView>
-                        </View>
+                                            </View>
+                                        )}
+                                        ListEmptyComponent={<NoResults searchQuery={searchQuery} />}
+                                    />
+                                </>
+                            )}
+                        </SafeAreaView>
                     </View>
                 </Modal>
 
                 {isLoading ? (
-                    <FlatList
-                        data={[1, 2, 3, 4, 5, 6]}
-                        numColumns={2}
-                        keyExtractor={(item) => item.toString()}
-                        contentContainerStyle={styles.listContent}
-                        columnWrapperStyle={styles.columnWrapper}
-                        showsVerticalScrollIndicator={false}
-                        ListHeaderComponent={renderHeader()}
-                        renderItem={() => <SkeletonProduct />}
-                    />
+                    <View style={{ paddingHorizontal: 16, paddingTop: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <ProductSkeleton key={i} />
+                        ))}
+                    </View>
                 ) : (
                     <FlatList
                         data={displayedProducts}
@@ -242,19 +321,24 @@ const MyScreen = () => {
                         contentContainerStyle={styles.listContent}
                         columnWrapperStyle={displayedProducts.length > 0 ? styles.columnWrapper : null}
                         showsVerticalScrollIndicator={false}
-                        ListHeaderComponent={renderHeader()}
-                        renderItem={({ item }) => (
-                            <ProductCard
-                                item={item}
-                                isLiked={item.isLiked}
-                                onLike={handleLike}
-                            />
+                        ListHeaderComponent={<ListHeader />}
+                        renderItem={({ item, index }) => (
+                            <Animated.View
+                                entering={FadeInDown.delay(index * 100).springify()}
+                                style={{ width: '48%' }} // Slightly less than 50% for gap
+                            >
+                                <ProductCard
+                                    item={item}
+                                    isLiked={item.isLiked}
+                                    onLike={handleLike}
+                                />
+                            </Animated.View>
                         )}
                         ListEmptyComponent={<NoResults searchQuery={searchQuery} />}
                     />
                 )}
             </SafeAreaView>
-        </PremiumBackground>
+        </View>
     );
 }
 
@@ -265,54 +349,59 @@ const styles = StyleSheet.create({
     listContent: {
         paddingHorizontal: 16,
         paddingBottom: 100,
+        paddingTop: 10,
     },
     columnWrapper: {
         justifyContent: 'space-between',
-        gap: 12,
+        gap: 12, // Gap between columns
+    },
+    headerContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 15,
+        paddingTop: 10,
+        zIndex: 100,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
-        marginTop: 8,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
-        letterSpacing: 1.5,
-        color: '#fff',
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
+        letterSpacing: 2,
+        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     },
     iconButton: {
-        width: 40,
-        height: 40,
+        width: 42,
+        height: 42,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 20,
+        borderRadius: 21,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
+    },
+    headerAvatar: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        borderWidth: 2,
+        borderColor: '#D4AF37',
     },
     notificationDot: {
         position: 'absolute',
         top: 8,
-        right: 8,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#FF6B6B',
-        borderWidth: 1,
-        borderColor: '#fff',
+        right: 10,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#D4AF37',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
     },
     bannerWrapper: {
         marginBottom: 24,
         borderRadius: 24,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
     },
     bannerContainer: {
         flexDirection: 'row',
@@ -323,42 +412,29 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     bannerBadge: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 8,
+        borderRadius: 12,
         alignSelf: 'flex-start',
         marginBottom: 12,
     },
     bannerBadgeText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '600',
+        color: '#000',
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
     },
     bannerDiscount: {
-        fontSize: 42,
-        fontWeight: '800',
-        color: '#fff',
-        lineHeight: 42,
+        fontSize: 56,
+        fontWeight: '900',
+        lineHeight: 56,
     },
     bannerOffText: {
-        fontSize: 24,
-        fontWeight: '300',
-        color: 'rgba(255,255,255,0.8)',
+        fontSize: 18,
+        fontWeight: '500',
         marginBottom: 16,
-        letterSpacing: 4,
-    },
-    bannerButton: {
-        backgroundColor: '#fff',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 12,
-        alignSelf: 'flex-start',
-    },
-    bannerButtonText: {
-        color: '#000',
-        fontWeight: '700',
-        fontSize: 14,
+        letterSpacing: 3,
+        textTransform: 'uppercase',
     },
     bannerRight: {
         justifyContent: 'center',
@@ -375,22 +451,19 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
+        marginTop: 10,
     },
     sectionTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#fff',
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
     viewAll: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.6)',
-        fontWeight: '600',
+        fontWeight: '700',
+        letterSpacing: 1,
     },
     modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.85)',
-    },
-    modalContent: {
         flex: 1,
     },
     searchHeader: {
@@ -399,52 +472,48 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         gap: 12,
+        borderBottomWidth: 1,
     },
     closeButton: {
-        padding: 4,
+        padding: 8,
     },
     closeButtonText: {
-        color: '#fff',
         fontSize: 16,
         fontWeight: '600',
     },
     popularSearchContainer: {
-        padding: 20,
+        padding: 24,
     },
     popularTitle: {
-        color: 'rgba(255,255,255,0.6)',
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 16,
+        fontSize: 12,
+        fontWeight: '800',
+        marginBottom: 20,
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 2,
     },
     tagsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 12,
     },
     tag: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingHorizontal: 18,
+        paddingVertical: 12,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
     },
     tagText: {
-        color: '#fff',
         fontSize: 14,
+        fontWeight: '600',
     },
     resultsHeader: {
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
     },
     resultsCount: {
-        color: 'rgba(255,255,255,0.6)',
         fontSize: 14,
+        fontWeight: '500',
     },
     searchResults: {
         padding: 16,

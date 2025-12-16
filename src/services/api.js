@@ -3,7 +3,7 @@
  * Secure API client with interceptors for authentication and error handling
  */
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 
 // API Base Configuration
 const API_CONFIG = {
@@ -31,7 +31,7 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export const setAuthToken = async (token) => {
     try {
-        await SecureStore.setItemAsync(TOKEN_KEY, token);
+        await storage.setItem(TOKEN_KEY, token);
     } catch (error) {
         console.error('Failed to store auth token:', error);
     }
@@ -39,7 +39,7 @@ export const setAuthToken = async (token) => {
 
 export const getAuthToken = async () => {
     try {
-        return await SecureStore.getItemAsync(TOKEN_KEY);
+        return await storage.getItem(TOKEN_KEY);
     } catch (error) {
         console.error('Failed to get auth token:', error);
         return null;
@@ -48,8 +48,8 @@ export const getAuthToken = async () => {
 
 export const removeAuthToken = async () => {
     try {
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
-        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+        await storage.removeItem(TOKEN_KEY);
+        await storage.removeItem(REFRESH_TOKEN_KEY);
     } catch (error) {
         console.error('Failed to remove auth token:', error);
     }
@@ -92,7 +92,7 @@ api.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+                const refreshToken = await storage.getItem(REFRESH_TOKEN_KEY);
                 if (refreshToken) {
                     const response = await axios.post(`${API_CONFIG.BASE_URL}/auth/refresh`, {
                         refreshToken,

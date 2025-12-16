@@ -26,7 +26,7 @@ function Box(props) {
             onPointerOut={() => setHover(false)}
         >
             <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial color={hovered ? '#ff6b6b' : '#667eea'} />
+            <meshStandardMaterial color={hovered ? '#D4AF37' : '#1C2541'} />
         </mesh>
     );
 }

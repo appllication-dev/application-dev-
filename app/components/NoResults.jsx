@@ -9,8 +9,8 @@ const NoResults = ({ searchQuery }) => {
 
     return (
         <Animated.View entering={FadeIn.duration(400)} style={styles.container}>
-            <View style={[styles.iconContainer, { backgroundColor: colors.favoritesEmptyBg }]}>
-                <Feather name="search" size={60} color={colors.textLight} />
+            <View style={[styles.iconContainer, { backgroundColor: colors.card }]}>
+                <Feather name="search" size={60} color={colors.primary} style={{ opacity: 0.8 }} />
             </View>
             <Text style={[styles.title, { color: colors.text }]}>No Results Found</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>

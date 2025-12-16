@@ -1,98 +1,104 @@
 /**
- * World-Class Theme Colors
- * Inspired by Apple, Nike, Airbnb, and modern design trends
- * Premium color palette with perfect contrast and accessibility
+ * Professional & Elegant Theme Colors
+ * Inspired by Apple, Airbnb, and luxury brands
+ * Clean, minimalist, and sophisticated color palette
  */
 
 export const Colors = {
     light: {
-        // Core Brand Colors (Premium Indigo/Purple - Apple-inspired)
-        primary: '#6366F1',        // Vibrant Indigo
-        primaryDark: '#4F46E5',    // Deep Indigo
-        primaryLight: '#818CF8',   // Light Indigo
+        // Core Brand Colors (Luxury Light: Navy & Gold on White)
+        primary: '#0B1121',           // Deep Navy (for Text/Headings)
+        primaryDark: '#000000',       // Pure Black
+        primaryLight: '#1C2541',      // Lighter Navy
+
+        // Accent
+        accent: '#D4AF37',            // Gold (Brand Highlight)
+        accentSecondary: '#F3E5AB',   // Champagne
+        accentLight: '#E5C158',       // Bright Gold
 
         // Background System
-        background: '#FFFFFF',      // Pure White
-        backgroundSecondary: '#F9FAFB',  // Subtle Gray
+        background: '#FFFFFF',        // Pure White
+        backgroundSecondary: '#FAFAFA', // Off-White
 
         // Card System
         card: '#FFFFFF',
-        cardSecondary: '#F3F4F6',   // Light Gray Card
+        cardSecondary: '#F9FAFB',
+        cardElevated: '#FFFFFF',
 
         // Text Hierarchy
-        text: '#111827',            // Almost Black
-        textSecondary: '#6B7280',   // Medium Gray
-        textLight: '#9CA3AF',       // Light Gray
-        textInverse: '#FFFFFF',
+        text: '#0B1121',              // Deep Navy (High Contrast)
+        textSecondary: '#4B5563',     // Dark Gray
+        textLight: '#9CA3AF',         // Light Gray
+        textInverse: '#FFFFFF',       // White
 
         // Borders & Dividers
-        border: '#E5E7EB',          // Subtle Border
+        border: '#E5E7EB',
         borderLight: '#F3F4F6',
+        borderDark: '#D1D5DB',
 
         // Status Colors
-        success: '#10B981',         // Emerald Green
-        error: '#EF4444',           // Red
-        warning: '#F59E0B',         // Amber
-        info: '#3B82F6',            // Blue
+        success: '#10B981',
+        error: '#D97706', // Changed from Red to Warning Gold/Orange
+        warning: '#D97706',
+        info: '#2563EB',
 
         // Elevation & Shadows
-        shadow: '#000000',
-        shadowLight: 'rgba(0, 0, 0, 0.05)',
-        shadowMedium: 'rgba(0, 0, 0, 0.1)',
-        shadowHeavy: 'rgba(0, 0, 0, 0.15)',
-
-        // Accent Colors (Nike-inspired)
-        accent: '#FF6B35',          // Vibrant Orange
-        accentSecondary: '#FFB800', // Golden Yellow
+        shadow: '#0B1121',            // Navy Shadow for clearer depth
+        shadowLight: 'rgba(11, 17, 33, 0.05)',
+        shadowMedium: 'rgba(11, 17, 33, 0.1)',
+        shadowHeavy: 'rgba(11, 17, 33, 0.15)',
 
         // Overlay
-        overlay: 'rgba(0, 0, 0, 0.5)',
-        overlayLight: 'rgba(0, 0, 0, 0.3)',
+        overlay: 'rgba(11, 17, 33, 0.5)',
+        overlayLight: 'rgba(11, 17, 33, 0.3)',
     },
 
     dark: {
-        // Core Brand Colors (Adjusted for dark mode)
-        primary: '#818CF8',         // Lighter Indigo for visibility
-        primaryDark: '#6366F1',
-        primaryLight: '#A5B4FC',
+        // PROFESSIONAL LUXURY (Gold on Deep Black)
+        primary: '#D4AF37',           // Luxury Gold
+        primaryDark: '#AA8C2C',       
+        primaryLight: '#F3E5AB',      // Champagne
 
-        // Background System (Premium Dark)
-        background: '#0F172A',      // Deep Slate
-        backgroundSecondary: '#1E293B', // Lighter Slate
+        // Accent
+        accent: '#D4AF37',            // Gold (Consistent branding)
+        accentSecondary: '#F3E5AB',   
+        accentLight: '#FFE5B4',       
 
-        // Card System
-        card: '#1E293B',            // Elevated Card
-        cardSecondary: '#334155',   // Lighter Card
+        // Background System
+        background: '#050505',        // Almost Pure Black (OLED Friendly)
+        backgroundSecondary: '#0F0F0F', 
+
+        // Card System (Subtle & Clean)
+        card: '#121212',              // Material Dark Standard
+        cardSecondary: '#1A1A1A', 
+        cardElevated: '#1E1E1E',
 
         // Text Hierarchy
-        text: '#F1F5F9',            // Almost White
-        textSecondary: '#94A3B8',   // Light Slate
-        textLight: '#64748B',       // Medium Slate
-        textInverse: '#0F172A',
+        text: '#F4F4F5',              // Off-white for readability (not harsh #FFF)
+        textSecondary: '#A1A1AA',     // Neutral Gray
+        textLight: '#71717A',         
+        textInverse: '#000000',       
 
         // Borders & Dividers
-        border: '#334155',
-        borderLight: '#1E293B',
+        border: '#27272A',            // Subtle border
+        borderLight: '#18181B',
+        borderDark: '#000000',
 
-        // Status Colors (Adjusted for dark)
-        success: '#34D399',         // Lighter Emerald
-        error: '#F87171',           // Lighter Red
-        warning: '#FBBF24',         // Lighter Amber
-        info: '#60A5FA',            // Lighter Blue
+        // Status Colors
+        success: '#10B981',           // Professional Emerald
+        error: '#EF4444',             // Standard Red
+        warning: '#F59E0B',           // Amber
+        info: '#3B82F6',              // Blue
 
         // Elevation & Shadows
-        shadow: '#000000',
-        shadowLight: 'rgba(0, 0, 0, 0.3)',
-        shadowMedium: 'rgba(0, 0, 0, 0.5)',
-        shadowHeavy: 'rgba(0, 0, 0, 0.7)',
-
-        // Accent Colors
-        accent: '#FF8A65',          // Softer Orange
-        accentSecondary: '#FFD54F', // Softer Yellow
+        shadow: '#000000',            
+        shadowLight: 'rgba(0, 0, 0, 0.5)',
+        shadowMedium: 'rgba(0, 0, 0, 0.8)',
+        shadowHeavy: '#000000',
 
         // Overlay
-        overlay: 'rgba(0, 0, 0, 0.7)',
-        overlayLight: 'rgba(0, 0, 0, 0.5)',
+        overlay: 'rgba(0, 0, 0, 0.85)',
+        overlayLight: 'rgba(0, 0, 0, 0.7)',
     },
 };
 
@@ -219,11 +225,11 @@ export const Spacing = {
  * Border Radius
  */
 export const BorderRadius = {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 24,
+    xs: 6,
+    sm: 10,
+    md: 14,
+    lg: 18,      // Funny Shop standard
+    xl: 24,      // Funny Shop large
     xxl: 32,
     round: 9999,
     full: 9999,

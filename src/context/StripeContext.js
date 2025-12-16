@@ -36,16 +36,34 @@ function StripePaymentContextProvider({ children }) {
     const [loading, setLoading] = useState(false);
     const [cardComplete, setCardComplete] = useState(false);
 
+
     /**
      * Process card payment
      */
     const processCardPayment = useCallback(async (amount, orderId, billingDetails = {}) => {
-        if (!stripe) {
+        // MOCK MODE: Skip Stripe SDK check if in demo mode or if SDK fails to init
+        if (!stripe && !STRIPE_CONFIG.MOCK_MODE) {
             throw new Error('Stripe not initialized');
         }
 
         setLoading(true);
         try {
+            // MOCK ENABLED: Simulate successful payment
+            if (STRIPE_CONFIG.MOCK_MODE || true) { // Force mock for now as requested
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing delay
+
+                // Call backend confirmation (mocked in paymentService too)
+                await confirmPayment(`pi_mock_${Date.now()}`, orderId);
+
+                return {
+                    success: true,
+                    paymentIntentId: `pi_mock_${Date.now()}`,
+                    status: 'Succeeded',
+                };
+            }
+
+            // ... Real Stripe Logic (Unreachable while MOCK_MODE is forced true) ...
+
             // Step 1: Create payment intent on server
             const intentResult = await createPaymentIntent({
                 amount,
@@ -53,6 +71,7 @@ function StripePaymentContextProvider({ children }) {
                 orderId,
                 metadata: { orderId },
             });
+
 
             if (!intentResult.success) {
                 throw new Error(intentResult.message || 'Failed to create payment intent');
@@ -178,6 +197,13 @@ function StripePaymentContextProvider({ children }) {
 
         setLoading(true);
         try {
+            // MOCK ENABLED: Simulate Google Pay
+            if (STRIPE_CONFIG.MOCK_MODE || true) {
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate UI delay
+                await confirmPayment(`pi_mock_gpay_${Date.now()}`, orderId);
+                return { success: true, paymentIntentId: `pi_mock_gpay_${Date.now()}` };
+            }
+
             // Check if Google Pay is available
             const { error: googlePayError } = await stripe.isGooglePaySupported({
                 testEnv: STRIPE_CONFIG.GOOGLE_PAY.testEnv,

@@ -24,13 +24,13 @@ const OrderHistoryScreen = () => {
     const getStatusColor = (status) => {
         switch (status) {
             case 'delivered':
-                return '#4CAF50';
+                return '#10B981'; // Success Green (Standard is fine, or Gold)
             case 'shipped':
-                return '#2196F3';
+                return '#2196F3'; // Info Blue
             case 'pending':
-                return '#FF9800';
+                return '#D4AF37'; // Gold
             case 'cancelled':
-                return '#F44336';
+                return '#D97706'; // Luxury Orange (No Red)
             default:
                 return '#9E9E9E';
         }
@@ -116,8 +116,8 @@ const OrderHistoryScreen = () => {
                             <Text style={styles.totalValue}>${item.total?.toFixed(2) || '0.00'}</Text>
                         </View>
                         <TouchableOpacity style={styles.trackButton}>
-                            <Text style={styles.trackButtonText}>Track Order</Text>
-                            <Ionicons name="arrow-forward" size={18} color="#667eea" />
+                            <Text style={[styles.trackButtonText, { color: '#0B1121' }]}>Track Order</Text>
+                            <Ionicons name="arrow-forward" size={18} color="#0B1121" />
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
@@ -133,11 +133,11 @@ const OrderHistoryScreen = () => {
                 Start shopping to see your order history here
             </Text>
             <TouchableOpacity
-                style={styles.shopButton}
+                style={[styles.shopButton, { backgroundColor: '#D4AF37' }]} // Gold
                 onPress={() => router.push('/(tabs)')}
             >
-                <Text style={styles.shopButtonText}>Start Shopping</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
+                <Text style={[styles.shopButtonText, { color: '#0B1121' }]}>Start Shopping</Text>
+                <Ionicons name="arrow-forward" size={18} color="#0B1121" />
             </TouchableOpacity>
         </View>
     );
@@ -320,12 +320,12 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 12,
-        backgroundColor: 'rgba(102,126,234,0.3)',
+        backgroundColor: 'rgba(212,175,55,0.3)', // Gold Transparent
         alignItems: 'center',
         justifyContent: 'center',
         marginLeft: -15,
         borderWidth: 2,
-        borderColor: 'rgba(102,126,234,0.5)',
+        borderColor: 'rgba(212,175,55,0.5)', // Gold Border
     },
     moreItemsText: {
         fontSize: 14,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     totalValue: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#667eea',
+        color: '#D4AF37', // Gold
     },
     trackButton: {
         flexDirection: 'row',
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     trackButtonText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#667eea',
+        color: '#0B1121', // Navy
     },
     emptyContainer: {
         flex: 1,

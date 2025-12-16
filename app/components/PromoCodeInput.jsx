@@ -11,15 +11,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCheckout } from '../../src/context/CheckoutContext';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const PromoCodeInput = () => {
     const { promoCode, discount, applyPromoCode, removePromoCode } = useCheckout();
+    const { t } = useTranslation();
     const [inputValue, setInputValue] = useState('');
     const [isApplying, setIsApplying] = useState(false);
 
     const handleApply = () => {
         if (!inputValue.trim()) {
-            Alert.alert('Error', 'Please enter a promo code');
+            Alert.alert(t('error'), t('enterPromoCode'));
             return;
         }
 
@@ -30,13 +32,13 @@ const PromoCodeInput = () => {
             setIsApplying(false);
             if (result.success) {
                 Alert.alert(
-                    'Success! 🎉',
-                    `${result.discount}% discount applied!`,
-                    [{ text: 'OK' }]
+                    `${t('success')}! 🎉`,
+                    `${result.discount}% ${t('discountApplied')}`,
+                    [{ text: t('ok') }]
                 );
                 setInputValue('');
             } else {
-                Alert.alert('Invalid Code', result.message);
+                Alert.alert(t('invalidCode'), result.message);
             }
         }, 500);
     };
@@ -59,7 +61,7 @@ const PromoCodeInput = () => {
                     <View style={styles.appliedLeft}>
                         <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
                         <View style={styles.appliedText}>
-                            <Text style={styles.appliedLabel}>Promo Applied</Text>
+                            <Text style={styles.appliedLabel}>{t('promoApplied')}</Text>
                             <Text style={styles.appliedCode}>{promoCode}</Text>
                         </View>
                     </View>
@@ -83,7 +85,7 @@ const PromoCodeInput = () => {
                 <Ionicons name="pricetag" size={20} color="rgba(255,255,255,0.7)" />
                 <TextInput
                     style={styles.input}
-                    placeholder="Enter promo code"
+                    placeholder={t('enterPromoCode')}
                     placeholderTextColor="rgba(255,255,255,0.5)"
                     value={inputValue}
                     onChangeText={setInputValue}
@@ -105,13 +107,13 @@ const PromoCodeInput = () => {
                 disabled={!inputValue.trim() || isApplying}
             >
                 <Text style={styles.applyButtonText}>
-                    {isApplying ? 'Applying...' : 'Apply'}
+                    {isApplying ? t('applying') : t('apply')}
                 </Text>
             </TouchableOpacity>
 
             {/* Promo Code Hints */}
             <View style={styles.hintsContainer}>
-                <Text style={styles.hintsTitle}>💡 Try these codes:</Text>
+                <Text style={styles.hintsTitle}>{t('tryCodes')}</Text>
                 <View style={styles.hintsRow}>
                     <TouchableOpacity
                         style={styles.hintChip}

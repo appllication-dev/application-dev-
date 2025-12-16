@@ -1,44 +1,48 @@
 import React from 'react';
-import { StyleSheet, Dimensions, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../../src/context/ThemeContext';
+import Svg, { Line } from 'react-native-svg';
 
-const { width, height } = Dimensions.get('window');
-
+/**
+ * Premium Background with Decorative Golden Lines
+ * Luxury design with subtle diagonal gold stripes
+ */
 const PremiumBackground = ({ children, style }) => {
-    const { theme } = useTheme();
+    const { colors, theme } = useTheme();
+    const isDark = theme === 'dark';
 
-    // Define gradient colors based on theme
-    // Light mode: Premium vibrant gradient
-    // Dark mode: Deep dark gradient with subtle purple tones
-    const gradientColors = theme === 'dark'
-        ? ['#1a1a2e', '#16213e', '#0f3460'] // Deep blue/purple for dark mode
-        : ['#667eea', '#764ba2', '#f093fb']; // Vibrant premium gradient for light mode
+    // Premium Black Background for Dark Mode
+    const backgroundColor = isDark ? '#000000' : colors.background;
+
+    // Luxury Gold Lines
+    const lineColor = isDark ? '#E5C158' : '#C4A030';
+    // Increased opacity for visibility on black
+    const lineOpacity = isDark ? 0.35 : 0.15;
+    const strokeWidth = isDark ? 1.5 : 1;
 
     return (
-        <View style={[styles.container, style]}>
-            <LinearGradient
-                colors={gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-            />
+        <View style={[
+            styles.container,
+            { backgroundColor },
+            style
+        ]}>
+            {/* Decorative Golden Lines (Both modes) */}
+            <View style={styles.linesContainer} pointerEvents="none">
+                <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                    {/* Primary Diagonal Flow (Top Right) */}
+                    <Line x1="40%" y1="-10%" x2="110%" y2="60%" stroke={lineColor} strokeWidth={strokeWidth} opacity={lineOpacity} />
+                    <Line x1="55%" y1="-10%" x2="110%" y2="45%" stroke={lineColor} strokeWidth={strokeWidth * 0.8} opacity={lineOpacity * 0.8} />
+                    <Line x1="70%" y1="-10%" x2="110%" y2="30%" stroke={lineColor} strokeWidth={strokeWidth * 0.6} opacity={lineOpacity * 0.6} />
 
-            {/* Animated Background Circles */}
-            <Animated.View
-                entering={FadeInUp.delay(200).springify()}
-                style={[styles.floatingCircle, styles.circle1]}
-            />
-            <Animated.View
-                entering={FadeInUp.delay(400).springify()}
-                style={[styles.floatingCircle, styles.circle2]}
-            />
+                    {/* Secondary Accent Lines (Bottom) */}
+                    <Line x1="-10%" y1="80%" x2="60%" y2="110%" stroke={lineColor} strokeWidth={strokeWidth} opacity={lineOpacity * 0.5} />
+                    <Line x1="5%" y1="80%" x2="45%" y2="110%" stroke={lineColor} strokeWidth={strokeWidth * 0.8} opacity={lineOpacity * 0.4} />
 
-            {/* Content Container - Z-index ensures content is above background */}
-            <View style={styles.content}>
-                {children}
+                    {/* Subtle Cross-Hatch details for texture (Very faint) */}
+                    <Line x1="90%" y1="0%" x2="100%" y2="10%" stroke={lineColor} strokeWidth={0.5} opacity={lineOpacity * 0.3} />
+                </Svg>
             </View>
+            {children}
         </View>
     );
 };
@@ -47,26 +51,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    content: {
-        flex: 1,
-        zIndex: 1,
-    },
-    floatingCircle: {
-        position: 'absolute',
-        borderRadius: 1000,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-    },
-    circle1: {
-        width: width * 0.8,
-        height: width * 0.8,
-        top: -width * 0.2,
-        right: -width * 0.2,
-    },
-    circle2: {
-        width: width * 0.6,
-        height: width * 0.6,
-        bottom: -width * 0.1,
-        left: -width * 0.1,
+    linesContainer: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
     },
 });
 

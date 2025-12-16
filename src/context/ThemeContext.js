@@ -26,14 +26,12 @@ export const ThemeProvider = ({ children }) => {
     }, [theme, isLoading, user]);
 
     const loadTheme = async () => {
-        if (!user) {
-            setTheme('system');
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            const key = `@theme_preference_${sanitizeEmail(user.email)}`;
+            // Use user-specific key if logged in, otherwise global/guest key
+            const key = user
+                ? `@theme_preference_${sanitizeEmail(user.email)}`
+                : '@theme_preference_global';
+
             const savedTheme = await AsyncStorage.getItem(key);
             if (savedTheme) {
                 setTheme(savedTheme);
@@ -48,9 +46,11 @@ export const ThemeProvider = ({ children }) => {
     };
 
     const saveTheme = async () => {
-        if (!user) return;
         try {
-            const key = `@theme_preference_${sanitizeEmail(user.email)}`;
+            const key = user
+                ? `@theme_preference_${sanitizeEmail(user.email)}`
+                : '@theme_preference_global';
+
             await AsyncStorage.setItem(key, theme);
         } catch (error) {
             console.warn('Failed to save theme:', error);

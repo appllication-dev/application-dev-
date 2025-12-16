@@ -12,17 +12,29 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useAuth } from "../../../src/context/AuthContext";
 import { validateEmail, validatePassword } from "../../../src/utils/validation";
 import { rateLimiters, sanitizeEmail, cleanInput } from "../../../src/utils/security";
 import { handleError, ERROR_TYPES } from "../../../src/utils/errorHandler";
+import { useTranslation } from "../../../src/hooks/useTranslation";
+
 
 const LoginScreen = () => {
     const router = useRouter();
+    const navigation = useNavigation();
     const { login, clearAllUsers } = useAuth();
+    const { t } = useTranslation();
+
+    // Helper for navigation
+    const handleAuthNavigation = () => {
+        // Navigate to the main app (Home)
+        router.replace('/(tabs)');
+    };
+
+
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -52,6 +64,7 @@ const LoginScreen = () => {
     };
 
     const handleLogin = async () => {
+
         // Check rate limiting
         if (!rateLimiters.login.isAllowed('login_attempt')) {
             const waitTime = Math.ceil(rateLimiters.login.getTimeUntilReset('login_attempt') / 1000);
@@ -68,19 +81,39 @@ const LoginScreen = () => {
         }
 
         setLoading(true);
+
         try {
             // Sanitize inputs
             const sanitizedEmail = sanitizeEmail(email);
             const cleanedPassword = cleanInput(password);
 
-            const success = await login(sanitizedEmail, cleanedPassword);
+
+
+            // Create a timeout promise (15 seconds)
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error("LOGIN_TIMEOUT"));
+                }, 15000);
+            });
+
+            // Race between login and timeout
+            const success = await Promise.race([
+                login(sanitizedEmail, cleanedPassword),
+                timeoutPromise
+            ]);
+
+
 
             if (success) {
                 // Reset rate limiter on successful login
                 rateLimiters.login.reset('login_attempt');
                 setLoginAttempts(0);
-                router.replace('/(tabs)');
+
+                // Ensure loading is off before navigation (good practice)
+                setLoading(false);
+                handleAuthNavigation();
             } else {
+                console.log("🚫 [LoginScreen] Login returned false (failure).");
                 setLoginAttempts(prev => prev + 1);
 
                 if (loginAttempts >= 2) {
@@ -104,19 +137,26 @@ const LoginScreen = () => {
                 }
             }
         } catch (error) {
-            handleError(error, {
-                context: 'LoginScreen',
-                onAuthError: () => {
-                    Alert.alert("Authentication Error", "Please check your credentials and try again.");
-                },
-                onNetworkError: () => {
-                    Alert.alert("Connection Error", "Please check your internet connection.");
-                },
-                onError: () => {
-                    Alert.alert("Error", "An unexpected error occurred. Please try again.");
-                }
-            });
+            console.error("💥 [LoginScreen] Error caught:", error);
+
+            if (error.message === "LOGIN_TIMEOUT") {
+                Alert.alert("Connection Timeout", "Login is taking too long. Please check your internet connection.");
+            } else {
+                handleError(error, {
+                    context: 'LoginScreen',
+                    onAuthError: () => {
+                        Alert.alert("Authentication Error", "Please check your credentials and try again.");
+                    },
+                    onNetworkError: () => {
+                        Alert.alert("Connection Error", "Please check your internet connection.");
+                    },
+                    onError: () => {
+                        Alert.alert("Error", "An unexpected error occurred. Please try again.");
+                    }
+                });
+            }
         } finally {
+            console.log("🏁 [LoginScreen] Finally block - stopping loader");
             setLoading(false);
         }
     };
@@ -143,7 +183,7 @@ const LoginScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <LinearGradient
-                colors={['#667eea', '#764ba2', '#f093fb']}
+                colors={['#000000', '#121212', '#1C1C1E']} // Luxury Black Gradient
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
@@ -164,17 +204,17 @@ const LoginScreen = () => {
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.logoCircle}>
-                        <Ionicons name="storefront" size={50} color="#667eea" />
+                        <Ionicons name="storefront" size={50} color="#D4AF37" />
                     </View>
-                    <Text style={styles.title}>Welcome Back!</Text>
-                    <Text style={styles.subtitle}>Sign in to continue</Text>
+                    <Text style={styles.title}>{t('welcome')}</Text>
+                    <Text style={styles.subtitle}>{t('login')}</Text>
                 </View>
 
                 {/* Form Container */}
-                <Animated.View entering={FadeInUp.duration(600).delay(200)} style={styles.formContainer}>
+                <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.formContainer}>
                     {/* Email Input */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Email</Text>
+                        <Text style={styles.label}>{t('email')}</Text>
                         <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
                             <Ionicons name="mail-outline" size={22} color="#fff" style={styles.inputIcon} />
                             <TextInput
@@ -201,7 +241,7 @@ const LoginScreen = () => {
 
                     {/* Password Input */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Password</Text>
+                        <Text style={styles.label}>{t('password')}</Text>
                         <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
                             <Ionicons name="lock-closed-outline" size={22} color="#fff" style={styles.inputIcon} />
                             <TextInput
@@ -241,17 +281,19 @@ const LoginScreen = () => {
                         activeOpacity={0.8}
                     >
                         {loading ? (
-                            <ActivityIndicator size="small" color="#667eea" />
+                            <ActivityIndicator size="small" color="#0B1121" />
                         ) : (
-                            <Text style={styles.loginButtonText}>Sign In</Text>
+                            <Text style={styles.loginButtonText}>{t('login')}</Text>
                         )}
                     </TouchableOpacity>
 
+
+
                     {/* Register Link */}
                     <View style={styles.registerContainer}>
-                        <Text style={styles.registerText}>Don't have an account? </Text>
+                        <Text style={styles.registerText}>{t('dontHaveAccount')} </Text>
                         <TouchableOpacity onPress={() => router.replace("/screens/auth/RegisterScreen")}>
-                            <Text style={styles.registerLink}>Create new account</Text>
+                            <Text style={styles.registerLink}>{t('createAccount')}</Text>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>
@@ -333,7 +375,7 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     loginButton: {
-        backgroundColor: '#fff',
+        backgroundColor: '#D4AF37', // Gold Button
         height: 56,
         borderRadius: 16,
         alignItems: 'center',
@@ -342,7 +384,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     loginButtonText: {
-        color: '#667eea',
+        color: '#000000', // Black text on Gold button
         fontSize: 18,
         fontWeight: '700',
     },
@@ -363,10 +405,10 @@ const styles = StyleSheet.create({
     },
     inputError: {
         borderWidth: 1,
-        borderColor: '#ff6b6b',
+        borderColor: '#D97706', // Gold/Orange Warning
     },
     errorText: {
-        color: '#ff6b6b',
+        color: '#D97706', // Gold/Orange Warning
         fontSize: 12,
         marginTop: 6,
         marginLeft: 4,

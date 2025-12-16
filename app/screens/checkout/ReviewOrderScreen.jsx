@@ -16,16 +16,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CartContext } from '../../../src/context/CardContext';
 import { useCheckout } from '../../../src/context/CheckoutContext';
+import { useTheme } from '../../../src/context/ThemeContext';
 import PremiumBackground from '../../components/PremiumBackground';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { rateLimiters } from '../../../src/utils/security';
 import { handleError } from '../../../src/utils/errorHandler';
+import { useTranslation } from '../../../src/hooks/useTranslation';
+import { RevolutionTheme } from '../../../src/theme/RevolutionTheme';
+
 
 const { width } = Dimensions.get('window');
 
 const ReviewOrderScreen = () => {
     const router = useRouter();
     const { carts, getTotalPrice, clearCart } = useContext(CartContext);
+    const { t } = useTranslation();
     const {
         currentShippingAddress,
         currentPaymentMethod,
@@ -33,6 +38,16 @@ const ReviewOrderScreen = () => {
         promoCode,
         createOrder
     } = useCheckout();
+    const { colors, theme } = useTheme();
+    const isDark = theme === 'dark';
+
+    // Dynamic Theme Colors
+    const themeBg = isDark ? RevolutionTheme.colors.background : RevolutionTheme.colors.backgroundLight;
+    const themeText = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
+    const themeTextSecondary = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
+    const themeCard = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
+    const themeBorder = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
+    const themeIconBg = isDark ? RevolutionTheme.colors.glass : 'rgba(212, 175, 55, 0.08)';
 
     const [loading, setLoading] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
@@ -122,19 +137,19 @@ const ReviewOrderScreen = () => {
                     }
                 });
             } else {
-                Alert.alert('Order Failed', 'Failed to create order. Please try again.');
+                Alert.alert(t('orderFailed'), t('orderFailedMsg'));
             }
         } catch (error) {
             handleError(error, {
                 context: 'ReviewOrderScreen',
                 onPaymentError: () => {
-                    Alert.alert('Payment Error', 'There was an issue processing your payment. Please try again.');
+                    Alert.alert(t('paymentError'), t('paymentErrorMsg'));
                 },
                 onNetworkError: () => {
-                    Alert.alert('Connection Error', 'Please check your internet connection and try again.');
+                    Alert.alert(t('connectionError'), t('connectionErrorMsg'));
                 },
                 onError: () => {
-                    Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+                    Alert.alert(t('error'), t('unexpectedError'));
                 }
             });
         } finally {
@@ -147,11 +162,11 @@ const ReviewOrderScreen = () => {
         const cardType = currentPaymentMethod?.cardType;
         switch (cardType) {
             case 'visa':
-                return <FontAwesome name="cc-visa" size={24} color="#1A1F71" />;
+                return <FontAwesome name="cc-visa" size={24} color={themeText} />;
             case 'mastercard':
-                return <FontAwesome name="cc-mastercard" size={24} color="#EB001B" />;
+                return <FontAwesome name="cc-mastercard" size={24} color={colors.error} />;
             case 'amex':
-                return <FontAwesome name="cc-amex" size={24} color="#006FCF" />;
+                return <FontAwesome name="cc-amex" size={24} color={colors.info} />;
             default:
                 if (currentPaymentMethod?.type === 'Cash on Delivery') {
                     return <Ionicons name="cash-outline" size={24} color="#4CAF50" />;
@@ -164,32 +179,44 @@ const ReviewOrderScreen = () => {
         <Animated.View
             key={item.id}
             entering={FadeInDown.delay(index * 100).springify()}
-            style={[styles.cartItem, index === carts.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}
+            style={[styles.cartItem, index === carts.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }, { borderBottomColor: themeBorder }]}
         >
-            <Image source={{ uri: item.image }} style={styles.itemImage} />
+            <Image source={{ uri: item.image }} style={[styles.itemImage, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]} />
             <View style={styles.itemDetails}>
-                <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                <Text style={styles.itemPrice}>${(item.price * (item.quantity || 1)).toFixed(2)}</Text>
+                <Text style={[styles.itemName, { color: themeText }]} numberOfLines={2}>{item.name}</Text>
+                <Text style={[styles.itemPrice, { color: RevolutionTheme.colors.primary }]}>${(item.price * (item.quantity || 1)).toFixed(2)}</Text>
             </View>
-            <View style={styles.quantityBadge}>
-                <Text style={styles.quantityText}>×{item.quantity || 1}</Text>
+            <View style={[styles.quantityBadge, { backgroundColor: isDark ? 'rgba(212, 175, 55, 0.1)' : 'rgba(212, 175, 55, 0.1)' }]}>
+                <Text style={[styles.quantityText, { color: RevolutionTheme.colors.primary }]}>×{item.quantity || 1}</Text>
             </View>
         </Animated.View>
     );
 
     return (
-        <PremiumBackground>
+        <View style={{ flex: 1, backgroundColor: themeBg }}>
+            {/* Background Gradient for Cream Mode */}
+            {!isDark && (
+                <LinearGradient
+                    colors={RevolutionTheme.colors.gradient.cream}
+                    style={StyleSheet.absoluteFill}
+                />
+            )}
+            {/* Background for Dark Mode */}
+            {isDark && (
+                <PremiumBackground style={StyleSheet.absoluteFill} />
+            )}
+
             <SafeAreaView style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity
-                        style={styles.backButton}
+                        style={[styles.backButton, { backgroundColor: themeIconBg }]}
                         onPress={() => router.back()}
                         disabled={loading}
                     >
-                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                        <Ionicons name="arrow-back" size={24} color={themeText} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Review Order</Text>
+                    <Text style={[styles.headerTitle, { color: themeText }]}>{t('reviewOrder')}</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
@@ -200,24 +227,24 @@ const ReviewOrderScreen = () => {
                     {/* Progress Indicator */}
                     <View style={styles.progressContainer}>
                         <View style={[styles.progressStep, styles.progressStepCompleted]}>
-                            <View style={styles.completedCircle}>
-                                <Ionicons name="checkmark" size={16} color="#667eea" />
+                            <View style={[styles.completedCircle, { backgroundColor: RevolutionTheme.colors.primary }]}>
+                                <Ionicons name="checkmark" size={16} color="#fff" />
                             </View>
-                            <Text style={styles.progressLabel}>Shipping</Text>
+                            <Text style={[styles.progressLabel, { color: themeText }]}>{t('shipping')}</Text>
                         </View>
-                        <View style={[styles.progressLine, styles.progressLineCompleted]} />
+                        <View style={[styles.progressLine, styles.progressLineCompleted, { backgroundColor: RevolutionTheme.colors.primary }]} />
                         <View style={[styles.progressStep, styles.progressStepCompleted]}>
-                            <View style={styles.completedCircle}>
-                                <Ionicons name="checkmark" size={16} color="#667eea" />
+                            <View style={[styles.completedCircle, { backgroundColor: RevolutionTheme.colors.primary }]}>
+                                <Ionicons name="checkmark" size={16} color="#fff" />
                             </View>
-                            <Text style={styles.progressLabel}>Payment</Text>
+                            <Text style={[styles.progressLabel, { color: themeText }]}>{t('paymentMethod')}</Text>
                         </View>
-                        <View style={[styles.progressLine, styles.progressLineCompleted]} />
+                        <View style={[styles.progressLine, styles.progressLineCompleted, { backgroundColor: RevolutionTheme.colors.primary }]} />
                         <View style={[styles.progressStep, styles.progressStepActive]}>
-                            <View style={styles.activeStepCircle}>
-                                <Text style={styles.activeStepText}>3</Text>
+                            <View style={[styles.activeStepCircle, { backgroundColor: RevolutionTheme.colors.primary }]}>
+                                <Text style={[styles.activeStepText, { color: isDark ? '#FFF' : '#000' }]}>3</Text>
                             </View>
-                            <Text style={[styles.progressLabel, styles.progressLabelActive]}>Review</Text>
+                            <Text style={[styles.progressLabel, styles.progressLabelActive, { color: themeText }]}>{t('reviewOrder')}</Text>
                         </View>
                     </View>
 
@@ -227,10 +254,10 @@ const ReviewOrderScreen = () => {
                         style={styles.section}
                     >
                         <View style={styles.sectionHeader}>
-                            <Ionicons name="cart" size={20} color="#fff" />
-                            <Text style={styles.sectionTitle}>Order Items ({carts.length})</Text>
+                            <Ionicons name="cart" size={20} color={themeText} />
+                            <Text style={[styles.sectionTitle, { color: themeText }]}>Order Items ({carts.length})</Text>
                         </View>
-                        <View style={styles.sectionContent}>
+                        <View style={[styles.sectionContent, { backgroundColor: themeCard, borderColor: themeBorder }]}>
                             {carts.map((item, index) => renderCartItem(item, index))}
                         </View>
                     </Animated.View>
@@ -241,26 +268,26 @@ const ReviewOrderScreen = () => {
                         style={styles.section}
                     >
                         <View style={styles.sectionHeader}>
-                            <Ionicons name="location" size={20} color="#fff" />
-                            <Text style={styles.sectionTitle}>Shipping Address</Text>
+                            <Ionicons name="location" size={20} color={themeText} />
+                            <Text style={[styles.sectionTitle, { color: themeText }]}>{t('shippingAddress')}</Text>
                             <TouchableOpacity
                                 onPress={() => router.push('/screens/checkout/ShippingScreen')}
                                 disabled={loading}
                             >
-                                <Text style={styles.editText}>Edit</Text>
+                                <Text style={[styles.editText, { color: RevolutionTheme.colors.primary }]}>{t('edit')}</Text>
                             </TouchableOpacity>
                         </View>
-                        <View style={styles.sectionContent}>
-                            <Text style={styles.addressName}>
+                        <View style={[styles.sectionContent, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                            <Text style={[styles.addressName, { color: themeText }]}>
                                 {currentShippingAddress?.fullName || 'No Address'}
                             </Text>
-                            <Text style={styles.addressText}>
+                            <Text style={[styles.addressText, { color: themeTextSecondary }]}>
                                 {currentShippingAddress?.address || ''}
                             </Text>
-                            <Text style={styles.addressText}>
+                            <Text style={[styles.addressText, { color: themeTextSecondary }]}>
                                 {currentShippingAddress?.city}, {currentShippingAddress?.zipCode}
                             </Text>
-                            <Text style={styles.addressText}>
+                            <Text style={[styles.addressText, { color: themeTextSecondary }]}>
                                 {currentShippingAddress?.phoneNumber || ''}
                             </Text>
                         </View>
@@ -272,26 +299,26 @@ const ReviewOrderScreen = () => {
                         style={styles.section}
                     >
                         <View style={styles.sectionHeader}>
-                            <Ionicons name="card" size={20} color="#fff" />
-                            <Text style={styles.sectionTitle}>Payment Method</Text>
+                            <Ionicons name="card" size={20} color={themeText} />
+                            <Text style={[styles.sectionTitle, { color: themeText }]}>{t('paymentMethod')}</Text>
                             <TouchableOpacity
                                 onPress={() => router.push('/screens/checkout/PaymentScreen')}
                                 disabled={loading}
                             >
-                                <Text style={styles.editText}>Edit</Text>
+                                <Text style={[styles.editText, { color: RevolutionTheme.colors.primary }]}>{t('edit')}</Text>
                             </TouchableOpacity>
                         </View>
-                        <View style={styles.sectionContent}>
+                        <View style={[styles.sectionContent, { backgroundColor: themeCard, borderColor: themeBorder }]}>
                             <View style={styles.paymentInfo}>
-                                <View style={styles.paymentIconContainer}>
+                                <View style={[styles.paymentIconContainer, { backgroundColor: themeIconBg }]}>
                                     {getPaymentIcon()}
                                 </View>
                                 <View style={{ marginLeft: 12, flex: 1 }}>
-                                    <Text style={styles.paymentType}>
+                                    <Text style={[styles.paymentType, { color: themeText }]}>
                                         {currentPaymentMethod?.type || 'Not selected'}
                                     </Text>
                                     {currentPaymentMethod?.lastFour && (
-                                        <Text style={styles.paymentNumber}>
+                                        <Text style={[styles.paymentNumber, { color: themeTextSecondary }]}>
                                             •••• •••• •••• {currentPaymentMethod.lastFour}
                                         </Text>
                                     )}
@@ -311,16 +338,16 @@ const ReviewOrderScreen = () => {
                         style={styles.section}
                     >
                         <View style={styles.sectionHeader}>
-                            <Ionicons name="receipt" size={20} color="#fff" />
-                            <Text style={styles.sectionTitle}>Price Details</Text>
+                            <Ionicons name="receipt" size={20} color={themeText} />
+                            <Text style={[styles.sectionTitle, { color: themeText }]}>Price Details</Text>
                         </View>
-                        <View style={styles.sectionContent}>
+                        <View style={[styles.sectionContent, { backgroundColor: themeCard, borderColor: themeBorder }]}>
                             <View style={styles.priceRow}>
-                                <Text style={styles.priceLabel}>Subtotal ({carts.length} items)</Text>
-                                <Text style={styles.priceValue}>${subtotal.toFixed(2)}</Text>
+                                <Text style={[styles.priceLabel, { color: themeTextSecondary }]}>Subtotal ({carts.length} items)</Text>
+                                <Text style={[styles.priceValue, { color: themeText }]}>${subtotal.toFixed(2)}</Text>
                             </View>
                             <View style={styles.priceRow}>
-                                <Text style={styles.priceLabel}>Shipping</Text>
+                                <Text style={[styles.priceLabel, { color: themeTextSecondary }]}>Shipping</Text>
                                 <Text style={[styles.priceValue, styles.freeText]}>FREE</Text>
                             </View>
                             {discount > 0 && (
@@ -334,10 +361,10 @@ const ReviewOrderScreen = () => {
                                     </Text>
                                 </View>
                             )}
-                            <View style={styles.divider} />
+                            <View style={[styles.divider, { backgroundColor: themeBorder }]} />
                             <View style={styles.priceRow}>
-                                <Text style={styles.totalLabel}>Total</Text>
-                                <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+                                <Text style={[styles.totalLabel, { color: themeText }]}>{t('total')}</Text>
+                                <Text style={[styles.totalValue, { color: RevolutionTheme.colors.primary }]}>${total.toFixed(2)}</Text>
                             </View>
                         </View>
                     </Animated.View>
@@ -345,10 +372,10 @@ const ReviewOrderScreen = () => {
                     {/* Security Note */}
                     <Animated.View
                         entering={FadeInUp.delay(500).springify()}
-                        style={styles.securityNote}
+                        style={[styles.securityNote, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)' }]}
                     >
-                        <Ionicons name="shield-checkmark" size={20} color="#4CAF50" />
-                        <Text style={styles.securityText}>
+                        <Ionicons name="shield-checkmark" size={20} color={isDark ? colors.success : '#4CAF50'} />
+                        <Text style={[styles.securityText, { color: themeTextSecondary }]}>
                             Your order is protected by our secure checkout
                         </Text>
                     </Animated.View>
@@ -357,11 +384,11 @@ const ReviewOrderScreen = () => {
                 {/* Place Order Button */}
                 <Animated.View
                     entering={FadeInDown.delay(500).springify()}
-                    style={styles.footer}
+                    style={[styles.footer, { backgroundColor: themeCard, borderTopColor: themeBorder }]}
                 >
                     <View style={styles.footerTotal}>
-                        <Text style={styles.footerTotalLabel}>Total</Text>
-                        <Text style={styles.footerTotalValue}>${total.toFixed(2)}</Text>
+                        <Text style={[styles.footerTotalLabel, { color: themeTextSecondary }]}>Total</Text>
+                        <Text style={[styles.footerTotalValue, { color: themeText }]}>${total.toFixed(2)}</Text>
                     </View>
                     <TouchableOpacity
                         style={[styles.placeOrderButton, loading && styles.buttonDisabled]}
@@ -370,27 +397,27 @@ const ReviewOrderScreen = () => {
                         disabled={loading || orderPlaced}
                     >
                         <LinearGradient
-                            colors={loading ? ['#999', '#777'] : ['#667eea', '#764ba2']}
+                            colors={loading ? ['#999', '#777'] : RevolutionTheme.colors.gradient.gold} // Gold Gradient
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={styles.gradient}
                         >
                             {loading ? (
                                 <>
-                                    <ActivityIndicator size="small" color="#fff" />
-                                    <Text style={styles.placeOrderText}>Processing...</Text>
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                    <Text style={[styles.placeOrderText, { color: '#FFF' }]}>{t('processing')}</Text>
                                 </>
                             ) : (
                                 <>
-                                    <Text style={styles.placeOrderText}>Place Order</Text>
-                                    <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                                    <Text style={[styles.placeOrderText, { color: isDark ? '#000' : '#FFF' }]}>{t('placeOrder')}</Text>
+                                    <Ionicons name="checkmark-circle" size={24} color={isDark ? '#000' : '#FFF'} />
                                 </>
                             )}
                         </LinearGradient>
                     </TouchableOpacity>
                 </Animated.View>
             </SafeAreaView>
-        </PremiumBackground>
+        </View>
     );
 };
 
@@ -409,14 +436,12 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.2)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#fff',
     },
     scrollContent: {
         paddingHorizontal: 20,
@@ -440,7 +465,7 @@ const styles = StyleSheet.create({
         width: 30,
         height: 30,
         borderRadius: 15,
-        backgroundColor: '#fff',
+        backgroundColor: '#D4AF37', // Gold 
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -448,7 +473,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#667eea',
+        backgroundColor: '#D4AF37', // Gold
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -460,20 +485,17 @@ const styles = StyleSheet.create({
     progressLabel: {
         marginTop: 8,
         fontSize: 12,
-        color: 'rgba(255,255,255,0.7)',
     },
     progressLabelActive: {
-        color: '#fff',
         fontWeight: '600',
     },
     progressLine: {
         width: 40,
         height: 2,
-        backgroundColor: 'rgba(255,255,255,0.3)',
         marginHorizontal: 10,
     },
     progressLineCompleted: {
-        backgroundColor: '#fff',
+        backgroundColor: '#D4AF37',
     },
     section: {
         marginBottom: 20,
@@ -486,21 +508,17 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
         marginLeft: 8,
         flex: 1,
     },
     editText: {
-        color: '#667eea',
         fontSize: 14,
         fontWeight: '600',
     },
     sectionContent: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
         borderRadius: 16,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
     },
     cartItem: {
         flexDirection: 'row',
@@ -508,13 +526,11 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         paddingBottom: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
     },
     itemImage: {
         width: 60,
         height: 60,
         borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.1)',
     },
     itemDetails: {
         flex: 1,
@@ -523,33 +539,27 @@ const styles = StyleSheet.create({
     itemName: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#fff',
         marginBottom: 4,
     },
     itemPrice: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#667eea',
     },
     quantityBadge: {
-        backgroundColor: 'rgba(102,126,234,0.3)',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 12,
     },
     quantityText: {
-        color: '#fff',
         fontWeight: '600',
     },
     addressName: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
         marginBottom: 8,
     },
     addressText: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
         marginBottom: 4,
     },
     paymentInfo: {
@@ -560,18 +570,15 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.9)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     paymentType: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
     },
     paymentNumber: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.7)',
         marginTop: 4,
     },
     codBadge: {
@@ -593,12 +600,10 @@ const styles = StyleSheet.create({
     },
     priceLabel: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
     },
     priceValue: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#fff',
     },
     freeText: {
         color: '#4CAF50',
@@ -618,18 +623,15 @@ const styles = StyleSheet.create({
     },
     divider: {
         height: 1,
-        backgroundColor: 'rgba(255,255,255,0.2)',
         marginVertical: 12,
     },
     totalLabel: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#fff',
     },
     totalValue: {
         fontSize: 22,
         fontWeight: '800',
-        color: '#667eea',
     },
     securityNote: {
         flexDirection: 'row',
@@ -640,7 +642,6 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     securityText: {
-        color: 'rgba(255,255,255,0.8)',
         fontSize: 13,
         marginLeft: 10,
         flex: 1,
@@ -651,9 +652,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: 20,
-        backgroundColor: 'rgba(0,0,0,0.4)',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.1)',
     },
     footerTotal: {
         flexDirection: 'row',
@@ -663,12 +662,10 @@ const styles = StyleSheet.create({
     },
     footerTotalLabel: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.8)',
     },
     footerTotalValue: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#fff',
     },
     placeOrderButton: {
         borderRadius: 16,

@@ -18,7 +18,7 @@ export const ERROR_TYPES = {
 
 // User-friendly error messages
 const ERROR_MESSAGES = {
-    [ERROR_TYPES.NETWORK]: 'Unable to connect. Please check your internet connection.',
+    [ERROR_TYPES.NETWORK]: 'Connection interrupted. Using offline mode.',
     [ERROR_TYPES.AUTH]: 'Authentication failed. Please login again.',
     [ERROR_TYPES.VALIDATION]: 'Please check your input and try again.',
     [ERROR_TYPES.SERVER]: 'Something went wrong on our end. Please try again later.',

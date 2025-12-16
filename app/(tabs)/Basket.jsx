@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, StatusBar, Dimensions, Alert, ActivityIndicator } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, StatusBar, Dimensions, Alert, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CartProduct from "../components/CartProduct";
 import { useContext, useState } from "react";
@@ -12,6 +12,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import PremiumBackground from "../components/PremiumBackground";
 import { BorderRadius } from "../../constants/theme";
 import { rateLimiters } from "../../src/utils/security";
+import { useTranslation } from "../../src/hooks/useTranslation";
+import { RevolutionTheme } from "../../src/theme/RevolutionTheme"; // Import Theme
 
 const { width } = Dimensions.get('window');
 
@@ -21,10 +23,20 @@ const Basket = () => {
   const navigation = useNavigation();
   const { carts, totalPrice, deleteItemFromCart } = useContext(CartContext);
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
+  const isDark = theme === 'dark';
 
   const shippingCost = 0;
   const tax = (totalPrice * 0.1).toFixed(2); // 10% tax
   const finalTotal = (parseFloat(totalPrice) + parseFloat(tax) + shippingCost).toFixed(2);
+
+  // Dynamic Theme Colors
+  const themeBg = isDark ? RevolutionTheme.colors.background : RevolutionTheme.colors.backgroundLight;
+  const themeText = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
+  const themeTextSecondary = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
+  const themeCard = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
+  const themeBorder = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
+  const themeIconBg = isDark ? RevolutionTheme.colors.glass : 'rgba(212, 175, 55, 0.08)';
 
   const handleCheckout = () => {
     // Rate limiting check
@@ -81,21 +93,33 @@ const Basket = () => {
   };
 
   return (
-    <PremiumBackground>
+    <View style={{ flex: 1, backgroundColor: themeBg }}>
+      {/* Background Gradient for Cream Mode */}
+      {!isDark && (
+        <LinearGradient
+          colors={RevolutionTheme.colors.gradient.cream}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+      {/* Background for Dark Mode */}
+      {isDark && (
+        <PremiumBackground style={StyleSheet.absoluteFill} />
+      )}
+
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
         {/* PREMIUM HEADER */}
         <View style={styles.headerContainer}>
           <View style={styles.headerContent}>
             <View>
-              <Text style={styles.headerSubtitle}>Shopping Cart</Text>
-              <Text style={styles.headerTitle}>
-                {carts.length} {carts.length === 1 ? 'Item' : 'Items'}
+              <Text style={[styles.headerSubtitle, { color: themeTextSecondary }]}>{t('yourCart')}</Text>
+              <Text style={[styles.headerTitle, { color: themeText }]}>
+                {carts.length} {t('items')}
               </Text>
             </View>
-            <View style={styles.cartIconContainer}>
-              <Feather name="shopping-bag" size={24} color="#fff" />
+            <View style={[styles.cartIconContainer, { backgroundColor: RevolutionTheme.colors.primary }]}>
+              <Feather name="shopping-bag" size={22} color={isDark ? '#000' : '#FFF'} />
             </View>
           </View>
         </View>
@@ -103,12 +127,12 @@ const Basket = () => {
         {carts.length === 0 ? (
           // EMPTY STATE
           <Animated.View entering={FadeInDown.duration(400)} style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Feather name="shopping-cart" size={64} color="rgba(255,255,255,0.5)" />
+            <View style={[styles.emptyIconContainer, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+              <Feather name="shopping-cart" size={48} color={themeTextSecondary} />
             </View>
-            <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
-            <Text style={styles.emptySubtitle}>
-              Add items to get started
+            <Text style={[styles.emptyTitle, { color: themeText }]}>{t('cartEmpty')}</Text>
+            <Text style={[styles.emptySubtitle, { color: themeTextSecondary }]}>
+              {t('cartEmptyDesc')}
             </Text>
           </Animated.View>
         ) : (
@@ -120,74 +144,71 @@ const Basket = () => {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
-                <View style={styles.cartItemWrapper}>
-                  <CartProduct item={item} deleteItemFromCart={deleteItemFromCart} isGlass={true} />
+                <View style={[styles.cartItemWrapper, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                  <CartProduct item={item} deleteItemFromCart={deleteItemFromCart} isGlass={false} isDark={isDark} />
                 </View>
               )}
             />
 
             {/* BOTTOM SUMMARY CARD */}
-            <View style={styles.bottomCard}>
+            <View style={[styles.bottomCard, { backgroundColor: themeCard, borderTopColor: themeBorder, shadowColor: isDark ? '#000' : '#D4AF37' }]}>
               {/* Order Summary */}
               <View style={styles.summarySection}>
-                <Text style={styles.summaryTitle}>Order Summary</Text>
+                <Text style={[styles.summaryTitle, { color: themeText }]}>{t('reviewOrder')}</Text>
 
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Subtotal</Text>
-                  <Text style={styles.summaryValue}>${totalPrice}</Text>
+                  <Text style={[styles.summaryLabel, { color: themeTextSecondary }]}>{t('subtotal')}</Text>
+                  <Text style={[styles.summaryValue, { color: themeText }]}>${totalPrice}</Text>
                 </View>
 
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Shipping</Text>
-                  <Text style={[styles.summaryValue, { color: '#4ade80' }]}>FREE</Text>
+                  <Text style={[styles.summaryLabel, { color: themeTextSecondary }]}>{t('shipping')}</Text>
+                  <Text style={[styles.summaryValue, { color: RevolutionTheme.colors.success }]}>{t('freeShipping')}</Text>
                 </View>
 
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Tax (10%)</Text>
-                  <Text style={styles.summaryValue}>${tax}</Text>
+                  <Text style={[styles.summaryLabel, { color: themeTextSecondary }]}>Tax (10%)</Text>
+                  <Text style={[styles.summaryValue, { color: themeText }]}>${tax}</Text>
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: themeBorder }]} />
 
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalValue}>${finalTotal}</Text>
+                  <Text style={[styles.totalLabel, { color: themeText }]}>{t('total')}</Text>
+                  <Text style={[styles.totalValue, { color: RevolutionTheme.colors.primary }]}>${finalTotal}</Text>
                 </View>
               </View>
 
               {/* CHECKOUT BUTTON */}
-              <TouchableOpacity activeOpacity={0.9} onPress={handleCheckout}>
-                <LinearGradient
-                  colors={['#fff', '#f0f0f0']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.checkoutButton}
-                >
-                  <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-                  <Feather name="arrow-right" size={20} color="#667eea" />
-                </LinearGradient>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={handleCheckout}
+                style={[styles.checkoutButton, { backgroundColor: RevolutionTheme.colors.primary }]}
+              >
+                <Text style={[styles.checkoutText, { color: isDark ? '#000' : '#FFF' }]}>{t('checkout')}</Text>
+                <Feather name="arrow-right" size={18} color={isDark ? '#000' : '#FFF'} />
               </TouchableOpacity>
 
               {/* Trust Badges */}
-              <View style={styles.trustBadges}>
+              <View style={[styles.trustBadges, { borderTopColor: themeBorder }]}>
                 <View style={styles.trustItem}>
-                  <Feather name="shield" size={14} color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.trustText}>Secure Payment</Text>
+                  <Feather name="shield" size={14} color={RevolutionTheme.colors.success} />
+                  <Text style={[styles.trustText, { color: themeTextSecondary }]}>{t('securePayment')}</Text>
                 </View>
                 <View style={styles.trustItem}>
-                  <Feather name="truck" size={14} color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.trustText}>Free Shipping</Text>
+                  <Feather name="truck" size={14} color={RevolutionTheme.colors.success} />
+                  <Text style={[styles.trustText, { color: themeTextSecondary }]}>{t('freeShipping')}</Text>
                 </View>
                 <View style={styles.trustItem}>
-                  <Feather name="refresh-cw" size={14} color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.trustText}>Easy Returns</Text>
+                  <Feather name="refresh-cw" size={14} color={RevolutionTheme.colors.success} />
+                  <Text style={[styles.trustText, { color: themeTextSecondary }]}>{t('easyReturns')}</Text>
                 </View>
               </View>
             </View>
           </>
         )}
       </SafeAreaView>
-    </PremiumBackground>
+    </View>
   );
 };
 
@@ -209,26 +230,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 4,
-    color: 'rgba(255,255,255,0.8)',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   cartIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
   },
   listContent: {
     paddingHorizontal: 20,
@@ -238,9 +251,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   emptyContainer: {
     flex: 1,
@@ -249,45 +264,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyIconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   emptyTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#fff',
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.7)',
   },
   bottomCard: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingTop: 24,
     paddingBottom: 32,
-    backgroundColor: 'rgba(0,0,0,0.3)', // Darker glass for better contrast
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 10,
   },
   summarySection: {
     marginBottom: 24,
   },
   summaryTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     marginBottom: 15,
-    color: '#fff',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -298,17 +310,14 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 15,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
   },
   summaryValue: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
   },
   divider: {
     height: 1,
     marginVertical: 16,
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   totalRow: {
     flexDirection: 'row',
@@ -316,43 +325,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLabel: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#fff',
   },
   totalValue: {
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
-    color: '#fff',
   },
   checkoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 18,
-    borderRadius: 16,
+    borderRadius: 14,
     gap: 8,
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    marginBottom: 24,
   },
   checkoutText: {
-    color: '#667eea',
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
   trustBadges: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 10,
-    paddingTop: 20,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   trustItem: {
     flexDirection: 'row',
@@ -362,7 +361,6 @@ const styles = StyleSheet.create({
   trustText: {
     fontSize: 11,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.7)',
   },
 });
 

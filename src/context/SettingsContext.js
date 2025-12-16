@@ -5,6 +5,9 @@ import { sanitizeEmail } from '../utils/helpers';
 
 const SettingsContext = createContext();
 
+// Key for global language storage (independent of user)
+const LANGUAGE_STORAGE_KEY = 'app_language_global';
+
 export const SettingsProvider = ({ children }) => {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState(true);
@@ -12,6 +15,20 @@ export const SettingsProvider = ({ children }) => {
     const [vibration, setVibration] = useState(true);
     const [language, setLanguage] = useState('ar');
     const [isFirstLaunch, setIsFirstLaunch] = useState(null); // null = loading, true = show onboarding, false = skip
+
+    // Load global language setting on app start (independent of user)
+    useEffect(() => {
+        (async () => {
+            try {
+                const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+                if (savedLanguage) {
+                    setLanguage(savedLanguage);
+                }
+            } catch (error) {
+                console.warn('Failed to load language setting', error);
+            }
+        })();
+    }, []);
 
     // Check if first launch (Global, not user specific)
     useEffect(() => {
@@ -38,15 +55,24 @@ export const SettingsProvider = ({ children }) => {
         }
     };
 
-    // Load saved settings on mount or user change
+    // Reset onboarding for testing purposes
+    const resetOnboarding = async () => {
+        try {
+            await AsyncStorage.removeItem('app_has_launched');
+            setIsFirstLaunch(true);
+        } catch (error) {
+            console.warn('Failed to reset onboarding status', error);
+        }
+    };
+
+    // Load user-specific settings on mount or user change (except language)
     useEffect(() => {
         (async () => {
             if (!user) {
-                // Reset to defaults if no user
+                // Reset to defaults if no user (except language - keep global)
                 setNotifications(true);
                 setSounds(true);
                 setVibration(true);
-                setLanguage('ar');
                 return;
             }
 
@@ -58,13 +84,11 @@ export const SettingsProvider = ({ children }) => {
                     setNotifications(parsed.notifications ?? true);
                     setSounds(parsed.sounds ?? true);
                     setVibration(parsed.vibration ?? true);
-                    setLanguage(parsed.language ?? 'ar');
                 } else {
                     // New user defaults
                     setNotifications(true);
                     setSounds(true);
                     setVibration(true);
-                    setLanguage('ar');
                 }
             } catch (e) {
                 console.warn('Failed to load settings', e);
@@ -72,19 +96,28 @@ export const SettingsProvider = ({ children }) => {
         })();
     }, [user]);
 
-    // Persist whenever a setting changes
+    // Persist user settings when they change (except language)
     useEffect(() => {
         if (!user) return;
 
-        const data = { notifications, sounds, vibration, language };
+        const data = { notifications, sounds, vibration };
         const key = `app_settings_${sanitizeEmail(user.email)}`;
         AsyncStorage.setItem(key, JSON.stringify(data)).catch(e => console.warn('Failed to save settings', e));
-    }, [notifications, sounds, vibration, language, user]);
+    }, [notifications, sounds, vibration, user]);
 
     const toggleNotifications = () => setNotifications(prev => !prev);
     const toggleSounds = () => setSounds(prev => !prev);
     const toggleVibration = () => setVibration(prev => !prev);
-    const changeLanguage = (lang) => setLanguage(lang);
+
+    // Change language and save globally (independent of user)
+    const changeLanguage = async (lang) => {
+        setLanguage(lang);
+        try {
+            await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+        } catch (error) {
+            console.warn('Failed to save language', error);
+        }
+    };
 
     return (
         <SettingsContext.Provider
@@ -99,6 +132,7 @@ export const SettingsProvider = ({ children }) => {
                 changeLanguage,
                 isFirstLaunch,
                 completeOnboarding,
+                resetOnboarding,
             }}
         >
             {children}
@@ -107,3 +141,4 @@ export const SettingsProvider = ({ children }) => {
 };
 
 export const useSettings = () => useContext(SettingsContext);
+

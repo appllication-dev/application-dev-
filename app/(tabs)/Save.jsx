@@ -6,40 +6,65 @@ import FavoriteCard from '../components/FavoriteCard';
 import Feather from 'react-native-vector-icons/Feather';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import PremiumBackground from '../components/PremiumBackground';
+import { useTranslation } from '../../src/hooks/useTranslation';
+import { RevolutionTheme } from "../../src/theme/RevolutionTheme";
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
 const Save = () => {
-    const { colors } = useTheme();
+    const { colors, theme } = useTheme();
     const { favorites, loading } = useFavorites();
+    const { t } = useTranslation();
+    const isDark = theme === 'dark';
+
+    // Dynamic Theme Colors
+    const themeBg = isDark ? RevolutionTheme.colors.background : RevolutionTheme.colors.backgroundLight;
+    const themeText = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
+    const themeTextSecondary = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
+    const themeCard = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
+    const themeBorder = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
+    const themeIconBg = isDark ? RevolutionTheme.colors.glass : 'rgba(212, 175, 55, 0.08)';
 
     const renderEmptyState = () => (
         <Animated.View entering={FadeIn.duration(600)} style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-                <Feather name="heart" size={80} color="rgba(255,255,255,0.5)" />
+            <View style={[styles.emptyIconContainer, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                <Feather name="heart" size={64} color={themeTextSecondary} />
             </View>
-            <Text style={styles.emptyTitle}>No Favorites Yet</Text>
-            <Text style={styles.emptySubtitle}>
-                Start adding products to your wishlist{'\n'}and they'll appear here
+            <Text style={[styles.emptyTitle, { color: themeText }]}>{t('noSavedItems')}</Text>
+            <Text style={[styles.emptySubtitle, { color: themeTextSecondary }]}>
+                {t('noSavedDesc')}
             </Text>
         </Animated.View>
     );
 
     return (
-        <PremiumBackground>
+        <View style={{ flex: 1, backgroundColor: themeBg }}>
+            {/* Background Gradient for Cream Mode */}
+            {!isDark && (
+                <LinearGradient
+                    colors={RevolutionTheme.colors.gradient.cream}
+                    style={StyleSheet.absoluteFill}
+                />
+            )}
+            {/* Background for Dark Mode */}
+            {isDark && (
+                <PremiumBackground style={StyleSheet.absoluteFill} />
+            )}
+
             <SafeAreaView style={styles.container} edges={['top']}>
-                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+                <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
                 {/* Header */}
                 <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.headerContent}>
                     <View>
-                        <Text style={styles.headerTitle}>My Favorites</Text>
-                        <Text style={styles.headerSubtitle}>
-                            {favorites.length} {favorites.length === 1 ? 'item' : 'items'}
+                        <Text style={[styles.headerTitle, { color: themeText }]}>{t('savedItems')}</Text>
+                        <Text style={[styles.headerSubtitle, { color: themeTextSecondary }]}>
+                            {favorites.length} {t('items')}
                         </Text>
                     </View>
-                    <View style={styles.headerIcon}>
-                        <Feather name="heart" size={28} color="#FFFFFF" />
+                    <View style={[styles.headerIcon, { backgroundColor: RevolutionTheme.colors.primary }]}>
+                        <Feather name="heart" size={24} color={isDark ? '#000' : '#FFF'} />
                     </View>
                 </Animated.View>
 
@@ -52,12 +77,12 @@ const Save = () => {
                     columnWrapperStyle={styles.columnWrapper}
                     showsVerticalScrollIndicator={false}
                     renderItem={({ item, index }) => (
-                        <FavoriteCard item={item} index={index} isGlass={true} />
+                        <FavoriteCard item={item} index={index} isGlass={true} isDark={isDark} />
                     )}
                     ListEmptyComponent={!loading ? renderEmptyState : null}
                 />
             </SafeAreaView>
-        </PremiumBackground>
+        </View>
     );
 };
 
@@ -74,29 +99,21 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     headerTitle: {
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: '800',
-        color: '#FFFFFF',
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
         marginBottom: 4,
-        textShadowColor: 'rgba(0,0,0,0.2)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
     },
     headerSubtitle: {
-        fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: 15,
         fontWeight: '500',
     },
     headerIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     listContent: {
         paddingHorizontal: 16,
@@ -113,28 +130,24 @@ const styles = StyleSheet.create({
         paddingHorizontal: 40,
     },
     emptyIconContainer: {
-        width: 160,
-        height: 160,
-        borderRadius: 80,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 32,
-        backgroundColor: 'rgba(255,255,255,0.1)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
     },
     emptyTitle: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: '700',
         marginBottom: 12,
         letterSpacing: 0.3,
-        color: '#fff',
     },
     emptySubtitle: {
-        fontSize: 16,
+        fontSize: 15,
         textAlign: 'center',
         lineHeight: 24,
-        color: 'rgba(255,255,255,0.8)',
     },
 });
 

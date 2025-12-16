@@ -17,6 +17,11 @@ import Animated, { FadeInDown, FadeInUp, ZoomIn, BounceIn } from 'react-native-r
 import { CartContext } from '../../../src/context/CardContext';
 import { useCheckout } from '../../../src/context/CheckoutContext';
 import { sendOrderUpdateNotification } from '../../../src/utils/notifications';
+import { useTranslation } from '../../../src/hooks/useTranslation';
+import { RevolutionTheme } from '../../../src/theme/RevolutionTheme';
+
+
+import { useTheme } from '../../../src/context/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,6 +30,17 @@ const OrderSuccessScreen = () => {
     const params = useLocalSearchParams();
     const { clearCart } = useContext(CartContext);
     const { resetCheckout } = useCheckout();
+    const { t } = useTranslation();
+    const { colors, theme } = useTheme();
+    const isDark = theme === 'dark';
+
+    // Dynamic Theme Colors
+    const themeBg = isDark ? RevolutionTheme.colors.background : RevolutionTheme.colors.backgroundLight;
+    const themeText = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
+    const themeTextSecondary = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
+    const themeCard = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
+    const themeBorder = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
+    const themeIconBg = isDark ? RevolutionTheme.colors.glass : 'rgba(212, 175, 55, 0.08)';
     const [showConfetti, setShowConfetti] = useState(true);
 
     const orderNumber = params.orderNumber || 'ORD-' + Date.now().toString(36).toUpperCase();
@@ -65,30 +81,50 @@ const OrderSuccessScreen = () => {
     const renderConfetti = () => {
         if (!showConfetti) return null;
 
-        const confettiColors = ['#667eea', '#764ba2', '#4CAF50', '#FF6B6B', '#FFD93D', '#6BCB77'];
+        const confettiColors = ['#D4AF37', '#B4941F', '#0B1121', '#1C2541', '#FFFFFF', '#E5C158'];
         return (
             <View style={styles.confettiContainer} pointerEvents="none">
                 {Array.from({ length: 20 }).map((_, i) => (
                     <Animated.View
                         key={i}
                         entering={BounceIn.delay(i * 50).duration(1000)}
-                        style={[
-                            styles.confettiPiece,
-                            {
-                                left: `${Math.random() * 100}%`,
-                                top: `${Math.random() * 50}%`,
-                                backgroundColor: confettiColors[i % confettiColors.length],
-                                transform: [{ rotate: `${Math.random() * 360}deg` }],
-                            },
-                        ]}
-                    />
+                        style={{
+                            position: 'absolute',
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 50}%`,
+                        }}
+                    >
+                        <Animated.View
+                            style={[
+                                styles.confettiPiece,
+                                {
+                                    backgroundColor: confettiColors[i % confettiColors.length],
+                                    transform: [{ rotate: `${Math.random() * 360}deg` }],
+                                    // Remove position from here since it's on wrapper
+                                    position: 'relative',
+                                },
+                            ]}
+                        />
+                    </Animated.View>
                 ))}
             </View>
         );
     };
 
     return (
-        <PremiumBackground>
+        <View style={{ flex: 1, backgroundColor: themeBg }}>
+            {/* Background Gradient for Cream Mode */}
+            {!isDark && (
+                <LinearGradient
+                    colors={RevolutionTheme.colors.gradient.cream}
+                    style={StyleSheet.absoluteFill}
+                />
+            )}
+            {/* Background for Dark Mode */}
+            {isDark && (
+                <PremiumBackground style={StyleSheet.absoluteFill} />
+            )}
+
             <SafeAreaView style={styles.container}>
                 {renderConfetti()}
 
@@ -99,56 +135,56 @@ const OrderSuccessScreen = () => {
                         style={styles.iconContainer}
                     >
                         <LinearGradient
-                            colors={['#4CAF50', '#45a049']}
+                            colors={RevolutionTheme.colors.gradient.gold} // Gold Gradient
                             style={styles.iconGradient}
                         >
-                            <Ionicons name="checkmark" size={60} color="#fff" />
+                            <Ionicons name="checkmark" size={60} color={colors.textInverse} />
                         </LinearGradient>
                     </Animated.View>
 
                     {/* Success Message */}
                     <Animated.Text
                         entering={FadeInDown.delay(400).springify()}
-                        style={styles.title}
+                        style={[styles.title, { color: themeText }]}
                     >
-                        Order Confirmed! 🎉
+                        {t('orderPlaced')} 🎉
                     </Animated.Text>
 
                     <Animated.Text
                         entering={FadeInDown.delay(500).springify()}
-                        style={styles.subtitle}
+                        style={[styles.subtitle, { color: themeTextSecondary }]}
                     >
-                        Thank you for your purchase!
+                        {t('orderSuccess')}
                     </Animated.Text>
 
                     {/* Order Details */}
                     <Animated.View
                         entering={FadeInDown.delay(600).springify()}
-                        style={styles.orderDetailsContainer}
+                        style={[styles.orderDetailsContainer, { backgroundColor: themeCard, borderColor: themeBorder }]}
                     >
                         <View style={styles.orderRow}>
-                            <Text style={styles.orderLabel}>Order Number</Text>
+                            <Text style={[styles.orderLabel, { color: themeTextSecondary }]}>{t('orderNumber')}</Text>
                             <TouchableOpacity
                                 style={styles.copyButton}
                                 onPress={handleShare}
                             >
-                                <Text style={styles.orderValue}>{orderNumber}</Text>
-                                <Ionicons name="share-outline" size={18} color="#667eea" />
+                                <Text style={[styles.orderValue, { color: themeText }]}>{orderNumber}</Text>
+                                <Ionicons name="share-outline" size={18} color={RevolutionTheme.colors.primary} />
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.divider} />
+                        <View style={[styles.divider, { backgroundColor: themeBorder }]} />
 
                         <View style={styles.orderRow}>
-                            <Text style={styles.orderLabel}>Total Amount</Text>
-                            <Text style={styles.totalValue}>${total}</Text>
+                            <Text style={[styles.orderLabel, { color: themeTextSecondary }]}>{t('totalAmount')}</Text>
+                            <Text style={[styles.totalValue, { color: RevolutionTheme.colors.primary }]}>${total}</Text>
                         </View>
 
-                        <View style={styles.divider} />
+                        <View style={[styles.divider, { backgroundColor: themeBorder }]} />
 
                         <View style={styles.orderRow}>
-                            <Text style={styles.orderLabel}>Estimated Delivery</Text>
-                            <Text style={styles.orderValue}>3-5 Business Days</Text>
+                            <Text style={[styles.orderLabel, { color: themeTextSecondary }]}>{t('estimatedDelivery')}</Text>
+                            <Text style={[styles.orderValue, { color: themeText }]}>{t('businessDays')}</Text>
                         </View>
                     </Animated.View>
 
@@ -157,37 +193,37 @@ const OrderSuccessScreen = () => {
                         entering={FadeInDown.delay(700).springify()}
                         style={styles.featuresContainer}
                     >
-                        <View style={styles.featureItem}>
-                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(102,126,234,0.2)' }]}>
+                        <View style={[styles.featureItem, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(102,126,234,0.1)' }]}>
                                 <Ionicons name="mail" size={22} color="#667eea" />
                             </View>
                             <View style={styles.featureText}>
-                                <Text style={styles.featureTitle}>Email Confirmation</Text>
-                                <Text style={styles.featureDesc}>Sent to your email</Text>
+                                <Text style={[styles.featureTitle, { color: themeText }]}>{t('emailConfirmation')}</Text>
+                                <Text style={[styles.featureDesc, { color: themeTextSecondary }]}>{t('sentToEmail')}</Text>
                             </View>
-                            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                            <Ionicons name="checkmark-circle" size={20} color={RevolutionTheme.colors.primary} />
                         </View>
 
-                        <View style={styles.featureItem}>
-                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(76,175,80,0.2)' }]}>
-                                <Ionicons name="cube" size={22} color="#4CAF50" />
+                        <View style={[styles.featureItem, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(212,175,55,0.1)' }]}>
+                                <Ionicons name="cube" size={22} color={RevolutionTheme.colors.primary} />
                             </View>
                             <View style={styles.featureText}>
-                                <Text style={styles.featureTitle}>Free Shipping</Text>
-                                <Text style={styles.featureDesc}>Tracked delivery</Text>
+                                <Text style={[styles.featureTitle, { color: themeText }]}>{t('freeShipping')}</Text>
+                                <Text style={[styles.featureDesc, { color: themeTextSecondary }]}>{t('trackedDelivery')}</Text>
                             </View>
-                            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                            <Ionicons name="checkmark-circle" size={20} color={RevolutionTheme.colors.primary} />
                         </View>
 
-                        <View style={styles.featureItem}>
-                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(255,107,107,0.2)' }]}>
-                                <Ionicons name="shield-checkmark" size={22} color="#FF6B6B" />
+                        <View style={[styles.featureItem, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                            <View style={[styles.featureIcon, { backgroundColor: 'rgba(217,119,6,0.1)' }]}>
+                                <Ionicons name="shield-checkmark" size={22} color="#D97706" />
                             </View>
                             <View style={styles.featureText}>
-                                <Text style={styles.featureTitle}>Buyer Protection</Text>
-                                <Text style={styles.featureDesc}>30-day guarantee</Text>
+                                <Text style={[styles.featureTitle, { color: themeText }]}>{t('buyerProtection')}</Text>
+                                <Text style={[styles.featureDesc, { color: themeTextSecondary }]}>{t('thirtyDayGuarantee')}</Text>
                             </View>
-                            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                            <Ionicons name="checkmark-circle" size={20} color={RevolutionTheme.colors.primary} />
                         </View>
                     </Animated.View>
 
@@ -205,28 +241,28 @@ const OrderSuccessScreen = () => {
                             activeOpacity={0.8}
                         >
                             <LinearGradient
-                                colors={['#667eea', '#764ba2']}
+                                colors={RevolutionTheme.colors.gradient.gold} // Gold Gradient
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.buttonGradient}
                             >
-                                <Ionicons name="location" size={20} color="#fff" />
-                                <Text style={styles.primaryButtonText}>Track Order</Text>
+                                <Ionicons name="location" size={20} color={isDark ? '#000' : '#FFF'} />
+                                <Text style={[styles.primaryButtonText, { color: isDark ? '#000' : '#FFF' }]}>{t('trackOrder')}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.secondaryButton}
+                            style={[styles.secondaryButton, { backgroundColor: themeIconBg, borderColor: RevolutionTheme.colors.primary }]}
                             onPress={() => router.replace('/(tabs)')}
                             activeOpacity={0.8}
                         >
-                            <Text style={styles.secondaryButtonText}>Continue Shopping</Text>
-                            <Ionicons name="arrow-forward" size={18} color="#667eea" />
+                            <Text style={[styles.secondaryButtonText, { color: RevolutionTheme.colors.primary }]}>{t('continueShopping')}</Text>
+                            <Ionicons name="arrow-forward" size={18} color={RevolutionTheme.colors.primary} />
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
             </SafeAreaView>
-        </PremiumBackground>
+        </View>
     );
 };
 
@@ -259,7 +295,7 @@ const styles = StyleSheet.create({
         borderRadius: 60,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#4CAF50',
+        shadowColor: '#D4AF37',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.3,
         shadowRadius: 20,
@@ -306,7 +342,7 @@ const styles = StyleSheet.create({
     totalValue: {
         fontSize: 20,
         fontWeight: '800',
-        color: '#4CAF50',
+        color: '#D4AF37',
     },
     copyButton: {
         flexDirection: 'row',
@@ -380,13 +416,13 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         backgroundColor: 'rgba(255,255,255,0.1)',
         borderWidth: 2,
-        borderColor: '#667eea',
+        borderColor: '#D4AF37',
         gap: 8,
     },
     secondaryButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#667eea',
+        color: '#D4AF37',
     },
 });
 

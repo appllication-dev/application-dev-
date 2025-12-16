@@ -1,11 +1,14 @@
 import { Feather } from "@expo/vector-icons";
-import { Text, View, StyleSheet, Image, TouchableOpacity } from "react-native";
+import { Text, View, StyleSheet, TouchableOpacity } from "react-native";
+import { Image } from 'expo-image';
 import { useTheme } from "../../src/context/ThemeContext";
 import { useContext } from "react";
 import { CartContext } from "../../src/context/CardContext";
+import { useTranslation } from "../../src/hooks/useTranslation";
 
 const CartProduct = ({ item, deleteItemFromCart }) => {
     const { colors, theme } = useTheme();
+    const { t } = useTranslation();
     const { updateCartItemQuantity } = useContext(CartContext);
     const quantity = item.quantity || 1;
     const stock = item.stock || 999;
@@ -26,7 +29,12 @@ const CartProduct = ({ item, deleteItemFromCart }) => {
         <View style={[styles.container, { backgroundColor: colors.card }]}>
             {/* Product Image */}
             <View style={styles.imageContainer}>
-                <Image source={{ uri: item.image }} style={styles.image} resizeMode="contain" />
+                <Image
+                    source={{ uri: item.image }}
+                    style={styles.image}
+                    contentFit="contain"
+                    transition={300}
+                />
             </View>
 
             {/* Product Info */}
@@ -37,7 +45,7 @@ const CartProduct = ({ item, deleteItemFromCart }) => {
                             {item.title}
                         </Text>
                         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                            {item.size || item.color || `Stock: ${stock}`}
+                            {item.size || item.color || `${t('stock')}: ${stock}`}
                         </Text>
                     </View>
 

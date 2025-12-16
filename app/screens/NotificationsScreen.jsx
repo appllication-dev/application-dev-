@@ -4,42 +4,47 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PremiumBackground from '../components/PremiumBackground';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useTranslation } from '../../src/hooks/useTranslation';
+import { useTheme } from '../../src/context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 const NotificationsScreen = () => {
     const router = useRouter();
+    const { t } = useTranslation();
+    const { colors, theme } = useTheme();
+    const isDark = theme === 'dark';
 
     const notifications = [
         {
             id: '1',
-            title: 'Order Shipped!',
-            message: 'Your order #ORD-9823 has been shipped and is on its way.',
-            time: '2 hours ago',
+            title: t('orderShippedTitle'),
+            message: t('orderShippedMsg'),
+            time: t('hoursAgo', { count: 2 }),
             type: 'order',
             read: false,
         },
         {
             id: '2',
-            title: 'New Arrival Alert',
-            message: 'Check out the new Summer Collection now available in store.',
-            time: '5 hours ago',
+            title: t('newArrivalTitle'),
+            message: t('newArrivalMsg'),
+            time: t('hoursAgo', { count: 5 }),
             type: 'promo',
             read: true,
         },
         {
             id: '3',
-            title: 'Flash Sale! ⚡',
-            message: 'Get 50% off on all hoodies for the next 24 hours.',
-            time: '1 day ago',
+            title: t('flashSaleTitle'),
+            message: t('flashSaleMsg'),
+            time: t('dayAgo', { count: 1 }),
             type: 'sale',
             read: true,
         },
         {
             id: '4',
-            title: 'Account Security',
-            message: 'Your password was successfully updated.',
-            time: '2 days ago',
+            title: t('accountSecurityTitle'),
+            message: t('accountSecurityMsg'),
+            time: t('daysAgo', { count: 2 }), // Borrowing daysAgo from Products translation
             type: 'security',
             read: true,
         },
@@ -57,26 +62,41 @@ const NotificationsScreen = () => {
 
     const getColor = (type) => {
         switch (type) {
-            case 'order': return '#667eea';
-            case 'promo': return '#FFD700';
-            case 'sale': return '#FF6B6B';
-            case 'security': return '#4CAF50';
-            default: return '#fff';
+            case 'order': return colors.info;
+            case 'promo': return colors.primary; // Gold for promo
+            case 'sale': return colors.error; // Deep Red for sale or Gold
+            case 'security': return colors.success;
+            default: return colors.text;
         }
     };
 
     const renderNotification = ({ item, index }) => (
         <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
-            <TouchableOpacity style={[styles.notificationCard, !item.read && styles.unreadCard]}>
+            <TouchableOpacity
+                style={[
+                    styles.notificationCard,
+                    {
+                        backgroundColor: !item.read
+                            ? (isDark ? 'rgba(255,255,255,0.1)' : colors.card) // Unread: Prominent
+                            : (isDark ? 'transparent' : colors.backgroundSecondary), // Read: Muted
+                        borderColor: !item.read ? colors.border : 'transparent',
+                        elevation: !item.read ? 2 : 0, // Add shadow for unread
+                        shadowColor: colors.shadow,
+                        shadowOpacity: !item.read ? 0.05 : 0,
+                        shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 2 }
+                    }
+                ]}
+            >
                 <View style={[styles.iconContainer, { backgroundColor: `${getColor(item.type)}20` }]}>
                     <Ionicons name={getIcon(item.type)} size={24} color={getColor(item.type)} />
                 </View>
                 <View style={styles.contentContainer}>
                     <View style={styles.headerRow}>
-                        <Text style={styles.title}>{item.title}</Text>
-                        <Text style={styles.time}>{item.time}</Text>
+                        <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
+                        <Text style={[styles.time, { color: colors.textSecondary }]}>{item.time}</Text>
                     </View>
-                    <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
+                    <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>{item.message}</Text>
                 </View>
                 {!item.read && <View style={styles.unreadDot} />}
             </TouchableOpacity>
@@ -86,12 +106,12 @@ const NotificationsScreen = () => {
     return (
         <PremiumBackground>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
+                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Notifications</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('notifications')}</Text>
                 <TouchableOpacity style={styles.clearButton}>
-                    <Text style={styles.clearText}>Clear All</Text>
+                    <Text style={[styles.clearText, { color: colors.textSecondary }]}>{t('clearAll')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -101,10 +121,11 @@ const NotificationsScreen = () => {
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
+                extraData={theme} // Force re-render when theme changes
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={60} color="rgba(255,255,255,0.3)" />
-                        <Text style={styles.emptyText}>No notifications yet</Text>
+                        <Ionicons name="notifications-off-outline" size={60} color={colors.textLight} />
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('noNotifications')}</Text>
                     </View>
                 }
             />
@@ -125,39 +146,31 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.1)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#fff',
     },
     clearButton: {
         padding: 8,
     },
     clearText: {
-        color: 'rgba(255,255,255,0.6)',
         fontSize: 14,
         fontWeight: '600',
     },
     listContent: {
         padding: 20,
+        backgroundColor: 'transparent',
     },
     notificationCard: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.1)',
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
-    },
-    unreadCard: {
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderColor: 'rgba(255,255,255,0.2)',
     },
     iconContainer: {
         width: 48,
@@ -179,22 +192,19 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
     },
     time: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
     },
     message: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
         lineHeight: 20,
     },
     unreadDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#FF6B6B',
+        backgroundColor: '#D4AF37', // Gold
         marginLeft: 8,
     },
     emptyContainer: {
@@ -203,7 +213,6 @@ const styles = StyleSheet.create({
         marginTop: 100,
     },
     emptyText: {
-        color: 'rgba(255,255,255,0.5)',
         fontSize: 16,
         marginTop: 16,
     },

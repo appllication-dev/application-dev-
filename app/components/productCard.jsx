@@ -1,5 +1,5 @@
 import { useNavigation } from "@react-navigation/native";
-import { Text, View, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { Text, View, StyleSheet, TouchableOpacity, Image, Platform } from "react-native";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -11,6 +11,9 @@ import FontAwesome from "react-native-vector-icons/FontAwesome";
 import { useFavorites } from "../../src/context/FavoritesContext";
 import { useTheme } from "../../src/context/ThemeContext";
 import { Shadows, BorderRadius, SpringConfig } from "../../constants/theme";
+import { RevolutionTheme } from "../../src/theme/RevolutionTheme";
+import { LinearGradient } from "expo-linear-gradient"; // Import LinearGradient
+import { BlurView } from "expo-blur"; // Import BlurView
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -20,13 +23,14 @@ const ProductCard = ({ item, onLike }) => {
     }
 
     const { isFavorite } = useFavorites();
-    const { colors } = useTheme();
+    const { colors, theme } = useTheme();
     const isProductLiked = isFavorite(item.id);
     const navigation = useNavigation();
+    const isDark = theme === 'dark';
 
     // Premium spring animations
     const scale = useSharedValue(1);
-    const shadowOpacity = useSharedValue(0.15);
+    const shadowOpacity = useSharedValue(isDark ? 0.3 : 0.1);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
@@ -34,72 +38,96 @@ const ProductCard = ({ item, onLike }) => {
     }));
 
     const handlePressIn = () => {
-        scale.value = withSpring(0.97, SpringConfig.light);
-        shadowOpacity.value = withTiming(0.08, { duration: 150 });
+        scale.value = withSpring(0.98, SpringConfig.light);
+        shadowOpacity.value = withTiming(isDark ? 0.5 : 0.15, { duration: 150 });
     };
 
     const handlePressOut = () => {
         scale.value = withSpring(1, SpringConfig.medium);
-        shadowOpacity.value = withTiming(0.15, { duration: 150 });
+        shadowOpacity.value = withTiming(isDark ? 0.3 : 0.1, { duration: 150 });
     };
+
+    // Dynamic Styles based on Theme
+    const cardBg = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
+    const borderColor = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
+    const textColor = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
+    const secondaryTextColor = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
 
     return (
         <AnimatedTouchable
             style={[
                 styles.container,
                 {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    borderWidth: 1,
+                    backgroundColor: cardBg,
+                    borderColor: borderColor,
                 },
-                Shadows.lg,
+                isDark ? styles.shadowDark : styles.shadowLight,
                 animatedStyle
             ]}
             onPress={() => navigation.navigate("ProductsDelt", { item })}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            activeOpacity={0.9}
+            activeOpacity={1}
         >
-            <View style={styles.imageContainer}>
-                <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
+            <View style={styles.imageWrapper}>
+                <Image
+                    source={{ uri: item.image }}
+                    style={styles.image}
+                    resizeMode="cover"
+                />
 
-                {/* Glassmorphic Like Button */}
-                <TouchableOpacity
-                    style={[
-                        styles.likeButton,
-                        { backgroundColor: 'rgba(0, 0, 0, 0.3)' }
-                    ]}
-                    onPress={() => onLike(item.id)}
-                    activeOpacity={0.8}
-                >
-                    {isProductLiked ? (
-                        <FontAwesome name="heart" size={18} color="#EF4444" />
-                    ) : (
-                        <Feather name="heart" size={18} color="#FFFFFF" />
-                    )}
-                </TouchableOpacity>
+                {/* Gradient Overlay for Text Readability on Image (if needed, but using card style) */}
+                {/* <LinearGradient 
+                    colors={['transparent', 'rgba(0,0,0,0.3)']} 
+                    style={StyleSheet.absoluteFill} 
+                /> */}
 
-                {/* Optional: NEW Badge */}
+                {/* Like Button - Glassmorphism */}
+                <BlurView intensity={isDark ? 20 : 10} tint={isDark ? "dark" : "light"} style={styles.likeButtonContainer}>
+                    <TouchableOpacity
+                        style={styles.likeButton}
+                        onPress={() => onLike(item.id)}
+                        activeOpacity={0.7}
+                    >
+                        {isProductLiked ? (
+                            <FontAwesome name="heart" size={18} color={RevolutionTheme.colors.primary} />
+                        ) : (
+                            <Feather name="heart" size={18} color={isDark ? "#FFF" : "#555"} />
+                        )}
+                    </TouchableOpacity>
+                </BlurView>
+
+                {/* Badge - Luxury Gold */}
                 {item.isNew && (
-                    <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-                        <Text style={styles.badgeText}>NEW</Text>
+                    <View style={styles.badge}>
+                        <LinearGradient
+                            colors={[RevolutionTheme.colors.primary, RevolutionTheme.colors.primaryDark]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.badgeGradient}
+                        >
+                            <Text style={styles.badgeText}>NEW</Text>
+                        </LinearGradient>
                     </View>
                 )}
             </View>
 
-            <View style={styles.detailsContainer}>
-                <Text style={[styles.title, { color: '#FFFFFF' }]} numberOfLines={1}>
+            <View style={styles.contentContainer}>
+                <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
                     {item.title}
                 </Text>
 
-                <View style={styles.priceContainer}>
-                    <Text style={[styles.price, { color: '#FFFFFF' }]}>
-                        ${item.price}
-                    </Text>
-                    {item.originalPrice && (
-                        <Text style={[styles.originalPrice, { color: 'rgba(255, 255, 255, 0.6)' }]}>
-                            ${item.originalPrice}
-                        </Text>
+                <View style={styles.infoRow}>
+                    <View style={styles.priceWrapper}>
+                        <Text style={[styles.currency, { color: RevolutionTheme.colors.primary }]}>$</Text>
+                        <Text style={[styles.price, { color: textColor }]}>{item.price}</Text>
+                    </View>
+
+                    {item.rating && (
+                        <View style={styles.ratingContainer}>
+                            <FontAwesome name="star" size={12} color={RevolutionTheme.colors.primary} />
+                            <Text style={[styles.ratingText, { color: secondaryTextColor }]}>{item.rating.rate}</Text>
+                        </View>
                     )}
                 </View>
             </View>
@@ -109,66 +137,106 @@ const ProductCard = ({ item, onLike }) => {
 
 const styles = StyleSheet.create({
     container: {
-        width: "48%",
-        borderRadius: BorderRadius.xl,
+        width: "100%", // Controlled by parent usually (FlatList numColumns) but here full
+        borderRadius: 24,
         marginBottom: 16,
         overflow: "hidden",
+        borderWidth: 1,
     },
-    imageContainer: {
-        position: "relative",
+    shadowDark: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    shadowLight: {
+        shadowColor: "#D4AF37", // Gold tinted shadow for light mode
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 4,
+    },
+    imageWrapper: {
+        height: 180,
         width: "100%",
-        height: 200,
-        overflow: "hidden",
+        position: 'relative',
     },
     image: {
         width: "100%",
         height: "100%",
     },
-    likeButton: {
+    likeButtonContainer: {
         position: "absolute",
-        top: 12,
-        right: 12,
-        width: 38,
-        height: 38,
-        borderRadius: 19,
+        top: 10,
+        right: 10,
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    likeButton: {
+        width: 40,
+        height: 40,
         alignItems: "center",
         justifyContent: "center",
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(255,255,255,0.1)', // Subtle for glass effect
     },
     badge: {
         position: "absolute",
-        top: 12,
-        left: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: BorderRadius.full,
+        top: 10,
+        left: 10,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    badgeGradient: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
     },
     badgeText: {
-        color: "#FFFFFF",
+        color: "#000",
         fontSize: 10,
-        fontWeight: "700",
+        fontWeight: "900",
+        letterSpacing: 1,
     },
-    detailsContainer: {
-        padding: 12,
+    contentContainer: {
+        padding: 16,
     },
     title: {
-        fontSize: 14,
-        fontWeight: "600",
-        marginBottom: 8,
-    },
-    priceContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    price: {
         fontSize: 16,
         fontWeight: "700",
+        marginBottom: 8,
+        letterSpacing: 0.5,
     },
-    originalPrice: {
+    infoRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    priceWrapper: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    currency: {
         fontSize: 12,
-        textDecorationLine: "line-through",
+        fontWeight: 'bold',
+        marginTop: 2,
+        marginRight: 2,
+    },
+    price: {
+        fontSize: 18,
+        fontWeight: "800",
+    },
+    ratingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    ratingText: {
+        fontSize: 12,
+        fontWeight: "600",
     },
 });
 

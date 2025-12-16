@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useSettings } from '../../src/context/SettingsContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -14,36 +15,55 @@ const slides = [
         title: 'Discover Trends',
         description: 'Explore the latest fashion trends and find your unique style with our curated collection.',
         icon: 'shirt-outline',
-        color: '#f093fb'
+        color: '#D4AF37' // Gold
     },
     {
         id: '2',
         title: 'Easy Shopping',
         description: 'Experience seamless shopping with our intuitive interface and secure checkout process.',
         icon: 'cart-outline',
-        color: '#f5576c'
+        color: '#C0C0C0' // Silver
     },
     {
         id: '3',
         title: 'Fast Delivery',
         description: 'Get your favorite items delivered to your doorstep in record time. We value your time.',
         icon: 'rocket-outline',
-        color: '#4facfe'
+        color: '#D97706' // Bronze/Orange
     }
 ];
 
 const OnboardingScreen = () => {
     const router = useRouter();
     const { completeOnboarding } = useSettings();
+    const { t } = useTranslation();
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollX = useRef(new Animated.Value(0)).current;
     const slidesRef = useRef(null);
 
-    const viewableItemsChanged = useRef(({ viewableItems }) => {
-        if (viewableItems && viewableItems.length > 0) {
-            setCurrentIndex(viewableItems[0].index);
+    const slides = [
+        {
+            id: '1',
+            title: t('onboardingTitle1'),
+            description: t('onboardingDesc1'),
+            icon: 'shirt-outline',
+            color: '#D4AF37'
+        },
+        {
+            id: '2',
+            title: t('onboardingTitle2'),
+            description: t('onboardingDesc2'),
+            icon: 'cart-outline',
+            color: '#C0C0C0'
+        },
+        {
+            id: '3',
+            title: t('onboardingTitle3'),
+            description: t('onboardingDesc3'),
+            icon: 'rocket-outline',
+            color: '#D97706'
         }
-    }).current;
+    ];
 
     const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
@@ -52,9 +72,15 @@ const OnboardingScreen = () => {
             slidesRef.current.scrollToIndex({ index: currentIndex + 1 });
         } else {
             await completeOnboarding();
-            router.replace('/screens/auth/LoginScreen');
+            router.replace('/(tabs)');
         }
     };
+
+    const viewableItemsChanged = useRef(({ viewableItems }) => {
+        if (viewableItems && viewableItems.length > 0) {
+            setCurrentIndex(viewableItems[0].index);
+        }
+    }).current;
 
     const Paginator = ({ data, scrollX }) => {
         return (
@@ -90,14 +116,17 @@ const OnboardingScreen = () => {
             <StatusBar style="light" />
 
             {/* Background Gradient */}
+            {/* Background Gradient - Pure Luxury Black */}
             <LinearGradient
-                colors={['#1a1a2e', '#16213e', '#0f3460']}
+                colors={['#000000', '#121212', '#1C1C1E']}
                 style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
             />
 
             {/* Decorative Circles */}
-            <View style={[styles.circle, { top: -100, right: -100, width: 300, height: 300, backgroundColor: 'rgba(240, 147, 251, 0.2)' }]} />
-            <View style={[styles.circle, { bottom: -50, left: -50, width: 200, height: 200, backgroundColor: 'rgba(79, 172, 254, 0.2)' }]} />
+            <View style={[styles.circle, { top: -100, right: -100, width: 300, height: 300, backgroundColor: 'rgba(212,175,55, 0.15)' }]} />
+            <View style={[styles.circle, { bottom: -50, left: -50, width: 200, height: 200, backgroundColor: 'rgba(192,192,192, 0.1)' }]} />
 
             <View style={{ flex: 3 }}>
                 <FlatList
@@ -109,7 +138,7 @@ const OnboardingScreen = () => {
                                     colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
                                     style={styles.iconCircle}
                                 >
-                                    <Ionicons name={item.icon} size={80} color="#fff" />
+                                    <Ionicons name={item.icon} size={80} color="#D4AF37" />
                                 </LinearGradient>
                             </View>
                             <View style={styles.textContainer}>
@@ -142,18 +171,18 @@ const OnboardingScreen = () => {
                     activeOpacity={0.8}
                 >
                     <LinearGradient
-                        colors={['#4facfe', '#00f2fe']}
+                        colors={['#D4AF37', '#B8860B']} // Rich Gold Gradient
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.buttonGradient}
                     >
-                        <Text style={styles.buttonText}>
-                            {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+                        <Text style={[styles.buttonText, { color: '#000000' }]}>
+                            {currentIndex === slides.length - 1 ? t('getStarted') : t('next')}
                         </Text>
                         <Ionicons
                             name={currentIndex === slides.length - 1 ? "rocket-outline" : "arrow-forward"}
                             size={20}
-                            color="#fff"
+                            color="#0B1121"
                         />
                     </LinearGradient>
                 </TouchableOpacity>
@@ -179,7 +208,7 @@ const styles = StyleSheet.create({
     },
     iconContainer: {
         marginBottom: 40,
-        shadowColor: '#4facfe',
+        shadowColor: '#D4AF37',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.3,
         shadowRadius: 20,
@@ -200,16 +229,20 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         fontWeight: '800',
-        color: '#fff',
+        color: '#D4AF37', // Gold Title
         marginBottom: 16,
         textAlign: 'center',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
+        textShadowColor: 'rgba(212, 175, 55, 0.2)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
     },
     description: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.7)',
+        color: '#E0E0E0', // Off-white for better readability against black
         textAlign: 'center',
         lineHeight: 24,
+        paddingHorizontal: 10,
     },
     footer: {
         flex: 1,
@@ -232,7 +265,7 @@ const styles = StyleSheet.create({
     button: {
         borderRadius: 16,
         overflow: 'hidden',
-        shadowColor: '#4facfe',
+        shadowColor: '#D4AF37',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

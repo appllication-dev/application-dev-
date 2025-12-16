@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useAuth } from "../../../src/context/AuthContext";
@@ -26,10 +26,60 @@ import {
 } from "../../../src/utils/validation";
 import { rateLimiters, sanitizeEmail, cleanInput } from "../../../src/utils/security";
 import { handleError } from "../../../src/utils/errorHandler";
+import { useTranslation } from "../../../src/hooks/useTranslation";
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const RegisterScreen = () => {
     const router = useRouter();
-    const { register } = useAuth();
+    const navigation = useNavigation();
+    const { register, loginWithGoogle } = useAuth();
+    const { t } = useTranslation();
+
+    // Helper for navigation
+    const handleAuthNavigation = () => {
+        if (navigation.canGoBack()) {
+            router.back();
+        } else {
+            router.replace('/(tabs)/profile');
+        }
+    };
+
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        clientId: '1076765269610-u5to0vkmrfc2b82f8hvjbg6jfaog3oom.apps.googleusercontent.com', // Force efficient Web ID usage
+        redirectUri: 'https://auth.expo.io/@m_mohamed_10_1/funny-shop',
+    });
+
+    React.useEffect(() => {
+        if (response?.type === 'success') {
+            const { id_token } = response.params;
+            handleGoogleSignIn(id_token);
+        }
+    }, [response]);
+
+    const handleGoogleSignIn = async (idToken) => {
+        if (idToken) {
+            setLoading(true);
+            try {
+                // loginWithGoogle handles both login and registration (creation of user doc)
+                const result = await loginWithGoogle(idToken);
+                if (result.success) {
+                    handleAuthNavigation();
+                }
+            } catch (error) {
+                Alert.alert("Google Sign-In Error", error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleGoogleLogin = () => {
+        promptAsync();
+    };
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -108,7 +158,7 @@ const RegisterScreen = () => {
 
             if (success) {
                 rateLimiters.register.reset('register_attempt');
-                router.replace('/(tabs)');
+                handleAuthNavigation();
             } else {
                 Alert.alert(
                     "Registration Failed",
@@ -122,7 +172,9 @@ const RegisterScreen = () => {
                     Alert.alert("Validation Error", err.message);
                 },
                 onNetworkError: () => {
-                    Alert.alert("Connection Error", "Please check your internet connection.");
+                    // Soften the blow, or better yet, retry automatically?
+                    // For now, respect user's "strong internet" claim and don't blame them.
+                    Alert.alert("Notice", "Connecting to server took longer than expected. Please try again.");
                 },
                 onError: () => {
                     Alert.alert("Error", "An unexpected error occurred. Please try again.");
@@ -136,7 +188,7 @@ const RegisterScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <LinearGradient
-                colors={['#f093fb', '#f5576c', '#4facfe']}
+                colors={['#0B1121', '#1C2541', '#0f172a']} // Navy Gradient
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
@@ -158,17 +210,17 @@ const RegisterScreen = () => {
                     {/* Header */}
                     <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
                         <View style={styles.logoCircle}>
-                            <Ionicons name="person-add" size={40} color="#f5576c" />
+                            <Ionicons name="person-add" size={40} color="#D4AF37" />
                         </View>
-                        <Text style={styles.title}>Create Account</Text>
-                        <Text style={styles.subtitle}>Join us and start your journey</Text>
+                        <Text style={styles.title}>{t('createAccount')}</Text>
+                        <Text style={styles.subtitle}>{t('register')}</Text>
                     </Animated.View>
 
                     {/* Form Container */}
                     <Animated.View entering={FadeInUp.duration(600).delay(200)} style={styles.formContainer}>
                         {/* Name Input */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Full Name</Text>
+                            <Text style={styles.label}>{t('fullName')}</Text>
                             <View style={[styles.inputWrapper, errors.name && styles.inputError]}>
                                 <Ionicons name="person-outline" size={22} color="#fff" style={styles.inputIcon} />
                                 <TextInput
@@ -193,7 +245,7 @@ const RegisterScreen = () => {
 
                         {/* Email Input */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Email</Text>
+                            <Text style={styles.label}>{t('email')}</Text>
                             <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
                                 <Ionicons name="mail-outline" size={22} color="#fff" style={styles.inputIcon} />
                                 <TextInput
@@ -221,7 +273,7 @@ const RegisterScreen = () => {
 
                         {/* Password Input */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Password</Text>
+                            <Text style={styles.label}>{t('password')}</Text>
                             <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
                                 <Ionicons name="lock-closed-outline" size={22} color="#fff" style={styles.inputIcon} />
                                 <TextInput
@@ -271,7 +323,7 @@ const RegisterScreen = () => {
 
                         {/* Confirm Password Input */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Confirm Password</Text>
+                            <Text style={styles.label}>{t('confirmPassword')}</Text>
                             <View style={[styles.inputWrapper, errors.confirmPassword && styles.inputError]}>
                                 <Ionicons name="lock-closed-outline" size={22} color="#fff" style={styles.inputIcon} />
                                 <TextInput
@@ -311,17 +363,41 @@ const RegisterScreen = () => {
                             activeOpacity={0.8}
                         >
                             {loading ? (
-                                <ActivityIndicator size="small" color="#f5576c" />
+                                <ActivityIndicator size="small" color="#0B1121" />
                             ) : (
-                                <Text style={styles.registerButtonText}>Sign Up</Text>
+                                <Text style={styles.registerButtonText}>{t('register')}</Text>
                             )}
                         </TouchableOpacity>
 
+
+                        {/* Google Login Button */}
+                        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 10 }}>Or sign up with</Text>
+                            <TouchableOpacity
+                                onPress={() => promptAsync()}
+                                disabled={!request}
+                                style={{
+                                    backgroundColor: 'white',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    paddingVertical: 12,
+                                    paddingHorizontal: 24,
+                                    borderRadius: 4,
+                                    width: '100%',
+                                    maxWidth: 280
+                                }}
+                            >
+                                <Ionicons name="logo-google" size={20} color="black" style={{ marginRight: 10 }} />
+                                <Text style={{ color: 'black', fontWeight: '600', fontSize: 16 }}>Sign up with Google</Text>
+                            </TouchableOpacity>
+                        </View>
+
                         {/* Login Link */}
                         <View style={styles.loginContainer}>
-                            <Text style={styles.loginText}>Already have an account? </Text>
+                            <Text style={styles.loginText}>{t('alreadyHaveAccount')} </Text>
                             <TouchableOpacity onPress={() => router.replace("/screens/auth/LoginScreen")}>
-                                <Text style={styles.loginLink}>Sign In</Text>
+                                <Text style={styles.loginLink}>{t('login')}</Text>
                             </TouchableOpacity>
                         </View>
                     </Animated.View>
@@ -397,7 +473,7 @@ const styles = StyleSheet.create({
     },
     inputError: {
         borderWidth: 1,
-        borderColor: '#ff6b6b',
+        borderColor: '#D97706', // Gold/Orange
     },
     inputIcon: {
         marginRight: 12,
@@ -408,7 +484,7 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     errorText: {
-        color: '#ff6b6b',
+        color: '#D97706', // Gold/Orange
         fontSize: 12,
         marginTop: 6,
         marginLeft: 4,
@@ -448,7 +524,7 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     registerButtonText: {
-        color: '#f5576c',
+        color: '#0B1121', // Navy
         fontSize: 18,
         fontWeight: '700',
     },

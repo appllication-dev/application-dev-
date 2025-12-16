@@ -1,5 +1,18 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { translations } from '../i18n/translations';
+import { Settings } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Helper to get current language from storage
+const getLanguage = async () => {
+    try {
+        const lang = await AsyncStorage.getItem('app_language_global');
+        return lang || 'en';
+    } catch {
+        return 'en';
+    }
+};
 
 // Check if we're in Expo Go (which doesn't support push notifications in SDK 53+)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -74,10 +87,13 @@ export async function sendWelcomeNotification(username) {
     }
 
     try {
+        const lang = await getLanguage();
+        const t = translations[lang];
+
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: "Welcome to Fashion Store! 🎉",
-                body: `Hi ${username}, we're glad you're here! Check out our latest collection with 50% OFF!`,
+                title: t.welcome + " " + t.shopName + " ! 🎉",
+                body: t.welcome + " " + username + ", " + t.onboardingDesc1,
                 data: { screen: 'Home' },
             },
             trigger: { seconds: 2 },
@@ -94,10 +110,13 @@ export async function sendNewProductNotification() {
     }
 
     try {
+        const lang = await getLanguage();
+        const t = translations[lang];
+
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: "New Arrival Alert! 🔥",
-                body: "Just dropped: Premium Summer Hoodie. Tap to view details!",
+                title: t.newArrival + "! 🔥",
+                body: t.searchProducts, // Using a generic placeholder for now as specific product name needs dynamic translation
                 data: { screen: 'NewArrivals' },
             },
             trigger: { seconds: 5 },
@@ -114,10 +133,13 @@ export async function sendOrderUpdateNotification(orderId, status) {
     }
 
     try {
+        const lang = await getLanguage();
+        const t = translations[lang];
+
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: `Order Update #${orderId} 📦`,
-                body: `Your order is now ${status}. Track it in the app!`,
+                title: t.orders + " #" + orderId + " 📦",
+                body: t.orderSuccess,
                 data: { screen: 'OrderTracking', orderId: orderId },
             },
             trigger: null,

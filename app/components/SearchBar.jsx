@@ -46,16 +46,16 @@ const SearchBar = ({ value, onChangeText, placeholder = "Search for products..."
             style={[
                 styles.container,
                 {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderColor: isFocused ? '#FFFFFF' : 'rgba(255, 255, 255, 0.2)',
+                    backgroundColor: colors.card,
+                    borderColor: isFocused ? colors.primary : colors.border,
                 },
             ]}
         >
-            <Fontisto name="search" size={20} color="rgba(255, 255, 255, 0.7)" style={styles.searchIcon} />
+            <Fontisto name="search" size={18} color={colors.primary} style={styles.searchIcon} />
             <TextInput
-                style={[styles.input, { color: '#FFFFFF' }]}
+                style={[styles.input, { color: colors.text }]}
                 placeholder={placeholder}
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                placeholderTextColor={colors.textLight}
                 value={localValue}
                 onChangeText={handleChange}
                 onFocus={() => setIsFocused(true)}
@@ -69,7 +69,7 @@ const SearchBar = ({ value, onChangeText, placeholder = "Search for products..."
                     style={styles.clearButton}
                     activeOpacity={0.7}
                 >
-                    <Feather name="x-circle" size={18} color="#FFFFFF" />
+                    <Feather name="x-circle" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
             </Animated.View>
         </View>
