@@ -817,6 +817,107 @@ export const deleteProductReview = async (productId, reviewId) => {
 };
 
 /**
+ * Toggle Like on a Review
+ */
+export const toggleReviewLike = async (productId, reviewId, userId) => {
+    if (!productId || !reviewId || !userId) throw new Error('Missing required params');
+
+    const toggleLocal = async () => {
+        try {
+            const reviewsKey = `reviews_${productId}`;
+            const stored = await AsyncStorage.getItem(reviewsKey);
+            let updatedReviews = [];
+            let isLiked = false;
+
+            if (stored) {
+                const currentReviews = JSON.parse(stored);
+                updatedReviews = currentReviews.map(review => {
+                    if (review.id === reviewId) {
+                        const likedBy = review.likedBy || [];
+                        const userIndex = likedBy.indexOf(userId);
+
+                        if (userIndex > -1) {
+                            // Unlike
+                            review.likedBy = likedBy.filter(id => id !== userId);
+                            review.likes = Math.max(0, (review.likes || 1) - 1);
+                            isLiked = false;
+                        } else {
+                            // Like
+                            review.likedBy = [...likedBy, userId];
+                            review.likes = (review.likes || 0) + 1;
+                            isLiked = true;
+                        }
+                    }
+                    return review;
+                });
+                await AsyncStorage.setItem(reviewsKey, JSON.stringify(updatedReviews));
+            }
+            return { success: true, isLiked };
+        } catch (error) {
+            console.error('Error toggling local like:', error);
+            throw error;
+        }
+    };
+
+    // 1. Always update locally first
+    const localResult = await toggleLocal();
+
+    if (!isFirebaseConfigured() || !db) {
+        return { ...localResult, source: 'local-only' };
+    }
+
+    // 2. Sync with Firestore
+    try {
+        const reviewRef = doc(db, PRODUCTS_COLLECTION, productId.toString(), 'reviews', reviewId);
+
+        const docSnap = await getDoc(reviewRef);
+        if (docSnap.exists()) {
+            const reviewData = docSnap.data();
+            const likedBy = reviewData.likedBy || [];
+            const userIndex = likedBy.indexOf(userId);
+
+            let updates = {};
+            if (userIndex > -1) {
+                // Remove
+                const newLikedBy = likedBy.filter(id => id !== userId);
+                updates = {
+                    likedBy: newLikedBy,
+                    likes: newLikedBy.length
+                };
+            } else {
+                // Add
+                const newLikedBy = [...likedBy, userId];
+                updates = {
+                    likedBy: newLikedBy,
+                    likes: newLikedBy.length
+                };
+            }
+
+            await updateDoc(reviewRef, updates);
+            return { success: true, source: 'firestore-synced', isLiked: localResult.isLiked };
+        }
+    } catch (error) {
+        console.warn('Firestore like sync failed (saved locally)');
+        return { ...localResult, source: 'local-fallback' };
+    }
+
+    return localResult;
+};
+
+/**
+ * Get local-only reviews (Fast)
+ */
+export const getLocalProductReviews = async (productId) => {
+    try {
+        const reviewsKey = `reviews_${productId}`;
+        const stored = await AsyncStorage.getItem(reviewsKey);
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        return [];
+    }
+};
+
+/**
  * Get reviews for a product
  */
 export const getProductReviews = async (productId) => {

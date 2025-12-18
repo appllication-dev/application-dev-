@@ -3,23 +3,22 @@ import { useSettings } from "../src/context/SettingsContext";
 import { useAuth } from "../src/context/AuthContext";
 import { useEffect } from "react";
 
+import PremiumSplash from "../app/components/PremiumSplash";
+
 export default function Index() {
     const { isFirstLaunch } = useSettings();
     const { user, loading } = useAuth();
     const router = useRouter();
     const segments = useSegments();
 
-    // Navigation is handled explicitly by screens (Login, Register, etc.)
-    // We remove the automatic effect here to prevent race conditions during login.
+    // Hide native splash immediately so our PremiumSplash takes over
     useEffect(() => {
-        if (!loading) {
-            SplashScreen.hideAsync();
-        }
-    }, [loading]);
+        SplashScreen.hideAsync();
+    }, []);
 
-    // If loading, render nothing (fast startup, no loading screen)
+    // If loading, render our Custom Splash
     if (loading) {
-        return null;
+        return <PremiumSplash />;
     }
 
     // If first launch, go to onboarding

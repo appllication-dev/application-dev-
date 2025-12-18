@@ -1,219 +1,246 @@
 import { useNavigation } from "@react-navigation/native";
-import { Text, View, StyleSheet, TouchableOpacity, Image, Platform } from "react-native";
+import { Text, View, StyleSheet, TouchableOpacity, Image, Platform, Dimensions } from "react-native";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withSpring,
     withTiming,
+    withRepeat,
+    withSequence,
+    Easing
 } from "react-native-reanimated";
 import Feather from "react-native-vector-icons/Feather";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
 import { useFavorites } from "../../src/context/FavoritesContext";
+import { useContext, useState } from "react";
+import { CartContext } from "../../src/context/CardContext"; // Note: Context file is named CardContext
 import { useTheme } from "../../src/context/ThemeContext";
-import { Shadows, BorderRadius, SpringConfig } from "../../constants/theme";
 import { RevolutionTheme } from "../../src/theme/RevolutionTheme";
-import { LinearGradient } from "expo-linear-gradient"; // Import LinearGradient
-import { BlurView } from "expo-blur"; // Import BlurView
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { useEffect } from "react";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const { width } = Dimensions.get('window');
 
-const ProductCard = ({ item, onLike }) => {
-    if (!item) {
-        return null;
-    }
+const ProductCard = ({ item, onLike, index }) => {
+    if (!item) return null;
 
     const { isFavorite } = useFavorites();
-    const { colors, theme } = useTheme();
+    const { addToCart } = useContext(CartContext);
+    const { theme } = useTheme();
     const isProductLiked = isFavorite(item.id);
     const navigation = useNavigation();
     const isDark = theme === 'dark';
 
-    // Premium spring animations
+    // Randomize slight floating delay to make it feel organic
+    const floatDelay = index ? index * 200 : Math.random() * 1000;
+
+    // Animations
     const scale = useSharedValue(1);
-    const shadowOpacity = useSharedValue(isDark ? 0.3 : 0.1);
+    const translateY = useSharedValue(0);
+    const textOpacity = useSharedValue(0);
+    const cartScale = useSharedValue(1);
+
+    const [isAdded, setIsAdded] = useState(false);
+
+    // Initial Floating Animation (Dreamy Breath)
+    useEffect(() => {
+        translateY.value = withRepeat(
+            withSequence(
+                withTiming(-5, { duration: 2000 + floatDelay, easing: Easing.inOut(Easing.ease) }),
+                withTiming(0, { duration: 2000 + floatDelay, easing: Easing.inOut(Easing.ease) })
+            ),
+            -1,
+            true
+        );
+        textOpacity.value = withTiming(1, { duration: 800 });
+    }, []);
 
     const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-        shadowOpacity: shadowOpacity.value,
+        transform: [{ scale: scale.value }, { translateY: translateY.value }],
+    }));
+
+    const cartAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: cartScale.value }],
     }));
 
     const handlePressIn = () => {
-        scale.value = withSpring(0.98, SpringConfig.light);
-        shadowOpacity.value = withTiming(isDark ? 0.5 : 0.15, { duration: 150 });
+        scale.value = withSpring(0.95, { damping: 10, stiffness: 100 });
     };
 
     const handlePressOut = () => {
-        scale.value = withSpring(1, SpringConfig.medium);
-        shadowOpacity.value = withTiming(isDark ? 0.3 : 0.1, { duration: 150 });
+        scale.value = withSpring(1, { damping: 10, stiffness: 100 });
     };
 
-    // Dynamic Styles based on Theme
-    const cardBg = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
-    const borderColor = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
-    const textColor = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
-    const secondaryTextColor = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
+    const handleAddToCart = async () => {
+        // Animation Sequence: Pop
+        cartScale.value = withSequence(
+            withTiming(1.5, { duration: 100 }),
+            withSpring(1, { damping: 8 })
+        );
+
+        setIsAdded(true);
+        await addToCart(item);
+
+        // Reset icon after 1.5 seconds
+        setTimeout(() => {
+            setIsAdded(false);
+        }, 1500);
+    };
 
     return (
         <AnimatedTouchable
-            style={[
-                styles.container,
-                {
-                    backgroundColor: cardBg,
-                    borderColor: borderColor,
-                },
-                isDark ? styles.shadowDark : styles.shadowLight,
-                animatedStyle
-            ]}
+            style={[styles.container, animatedStyle]}
             onPress={() => navigation.navigate("ProductsDelt", { item })}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             activeOpacity={1}
         >
-            <View style={styles.imageWrapper}>
+            {/* Cinematic Full Image */}
+            <View style={styles.imageContainer}>
                 <Image
                     source={{ uri: item.image }}
                     style={styles.image}
                     resizeMode="cover"
                 />
 
-                {/* Gradient Overlay for Text Readability on Image (if needed, but using card style) */}
-                {/* <LinearGradient 
-                    colors={['transparent', 'rgba(0,0,0,0.3)']} 
-                    style={StyleSheet.absoluteFill} 
-                /> */}
+                {/* Subtle dark gradient at bottom for text readability */}
+                <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.6)']}
+                    style={styles.bottomGradient}
+                />
 
-                {/* Like Button - Glassmorphism */}
-                <BlurView intensity={isDark ? 20 : 10} tint={isDark ? "dark" : "light"} style={styles.likeButtonContainer}>
+                {/* Like Button (Floating Glass) */}
+                <BlurView intensity={20} tint="dark" style={styles.likeGlass}>
                     <TouchableOpacity
                         style={styles.likeButton}
                         onPress={() => onLike(item.id)}
-                        activeOpacity={0.7}
                     >
                         {isProductLiked ? (
-                            <FontAwesome name="heart" size={18} color={RevolutionTheme.colors.primary} />
+                            <FontAwesome name="heart" size={16} color={RevolutionTheme.colors.primary} />
                         ) : (
-                            <Feather name="heart" size={18} color={isDark ? "#FFF" : "#555"} />
+                            <Feather name="heart" size={16} color="#FFF" />
                         )}
                     </TouchableOpacity>
                 </BlurView>
-
-                {/* Badge - Luxury Gold */}
-                {item.isNew && (
-                    <View style={styles.badge}>
-                        <LinearGradient
-                            colors={[RevolutionTheme.colors.primary, RevolutionTheme.colors.primaryDark]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.badgeGradient}
-                        >
-                            <Text style={styles.badgeText}>NEW</Text>
-                        </LinearGradient>
-                    </View>
-                )}
             </View>
 
-            <View style={styles.contentContainer}>
-                <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
-                    {item.title}
-                </Text>
+            {/* Dreamy Info Overlay (Glass) */}
+            <BlurView
+                intensity={Platform.OS === 'ios' ? 30 : 50}
+                tint={isDark ? "dark" : "light"}
+                style={[styles.infoGlass, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(212, 175, 55, 0.2)' }]}
+            >
+                <View style={styles.textContainer}>
+                    <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]} numberOfLines={1}>
+                        {item.title}
+                    </Text>
+                    <View style={styles.priceRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={[styles.currency, { color: RevolutionTheme.colors.primary }]}>$</Text>
+                            <Text style={[styles.price, { color: isDark ? '#EEE' : '#333' }]}>{item.price}</Text>
 
-                <View style={styles.infoRow}>
-                    <View style={styles.priceWrapper}>
-                        <Text style={[styles.currency, { color: RevolutionTheme.colors.primary }]}>$</Text>
-                        <Text style={[styles.price, { color: textColor }]}>{item.price}</Text>
-                    </View>
-
-                    {item.rating && (
-                        <View style={styles.ratingContainer}>
-                            <FontAwesome name="star" size={12} color={RevolutionTheme.colors.primary} />
-                            <Text style={[styles.ratingText, { color: secondaryTextColor }]}>{item.rating.rate}</Text>
+                            {/* Rating Star */}
+                            {item.rating && (
+                                <View style={styles.ratingBox}>
+                                    <FontAwesome name="star" size={10} color={RevolutionTheme.colors.primary} />
+                                    <Text style={styles.ratingText}>{item.rating.rate}</Text>
+                                </View>
+                            )}
                         </View>
-                    )}
+
+                        {/* Add to Cart Button */}
+                        <TouchableOpacity onPress={handleAddToCart} activeOpacity={0.7}>
+                            <Animated.View style={[styles.cartButton, cartAnimatedStyle, { backgroundColor: isAdded ? RevolutionTheme.colors.primary : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') }]}>
+                                <Feather
+                                    name={isAdded ? "check" : "shopping-bag"}
+                                    size={16}
+                                    color={isAdded ? '#FFF' : (isDark ? '#FFF' : '#333')}
+                                />
+                            </Animated.View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
+            </BlurView>
         </AnimatedTouchable>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        width: "100%", // Controlled by parent usually (FlatList numColumns) but here full
+        width: '100%',
+        height: 260, // Taller cinematic aspect ratio
         borderRadius: 24,
-        marginBottom: 16,
-        overflow: "hidden",
-        borderWidth: 1,
-    },
-    shadowDark: {
+        marginBottom: 20,
+        backgroundColor: 'transparent', // Let background show through
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3, // Deep shadow for floating effect
+        shadowRadius: 20,
+        elevation: 10,
     },
-    shadowLight: {
-        shadowColor: "#D4AF37", // Gold tinted shadow for light mode
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        elevation: 4,
-    },
-    imageWrapper: {
-        height: 180,
-        width: "100%",
+    imageContainer: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 24,
+        overflow: 'hidden',
         position: 'relative',
     },
     image: {
-        width: "100%",
-        height: "100%",
+        width: '100%',
+        height: '100%',
     },
-    likeButtonContainer: {
-        position: "absolute",
-        top: 10,
-        right: 10,
-        borderRadius: 20,
+    bottomGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+    },
+    likeGlass: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)'
     },
     likeButton: {
-        width: 40,
-        height: 40,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: 'rgba(255,255,255,0.1)', // Subtle for glass effect
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    badge: {
-        position: "absolute",
-        top: 10,
-        left: 10,
-        borderRadius: 12,
+    infoGlass: {
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        right: 12,
+        borderRadius: 16,
         overflow: 'hidden',
+        borderWidth: 1,
+        padding: 10,
     },
-    badgeGradient: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-    },
-    badgeText: {
-        color: "#000",
-        fontSize: 10,
-        fontWeight: "900",
-        letterSpacing: 1,
-    },
-    contentContainer: {
-        padding: 16,
+    textContainer: {
+        // padding handled by glass view
     },
     title: {
-        fontSize: 16,
-        fontWeight: "700",
-        marginBottom: 8,
+        fontSize: 13,
+        fontWeight: '600',
+        marginBottom: 4,
         letterSpacing: 0.5,
+        opacity: 0.9,
     },
-    infoRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-    priceWrapper: {
+    priceRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        justifyContent: 'space-between', // Push Cart button to right
     },
     currency: {
         fontSize: 12,
@@ -222,22 +249,31 @@ const styles = StyleSheet.create({
         marginRight: 2,
     },
     price: {
-        fontSize: 18,
-        fontWeight: "800",
+        fontSize: 16,
+        fontWeight: '800',
+        marginRight: 10,
     },
-    ratingContainer: {
+    ratingBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: 'rgba(0,0,0,0.05)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
         borderRadius: 8,
+        gap: 4
     },
     ratingText: {
-        fontSize: 12,
-        fontWeight: "600",
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: '700'
     },
+    cartButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    }
 });
 
 export default ProductCard;

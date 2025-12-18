@@ -11,6 +11,8 @@ import { useEffect } from "react";
 import { registerForPushNotificationsAsync } from "../src/utils/notifications";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CinematicWrapper from "./components/CinematicWrapper";
+import AIChatButton from "./components/AIChatButton";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Note: StripePaymentProvider is only used on native platforms
 // Uncomment when building for iOS/Android:
@@ -43,25 +45,28 @@ export default function RootLayout() {
    }, []);
 
    return (
-      <ErrorBoundary>
-         <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-               <SettingsProvider>
-                  <ThemeProvider>
-                     {/* CinematicWrapper handles the status bar background, but we still need StatusBar component for text color */}
-                     <CinematicWrapper>
-                        <FavoritesProvider>
-                           <CartProvider>
-                              <CheckoutProvider>
-                                 <Slot />
-                              </CheckoutProvider>
-                           </CartProvider>
-                        </FavoritesProvider>
-                     </CinematicWrapper>
-                  </ThemeProvider>
-               </SettingsProvider>
-            </AuthProvider>
-         </QueryClientProvider>
-      </ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+         <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+               <AuthProvider>
+                  <SettingsProvider>
+                     <ThemeProvider>
+                        {/* CinematicWrapper handles the status bar background, but we still need StatusBar component for text color */}
+                        <CinematicWrapper>
+                           <FavoritesProvider>
+                              <CartProvider>
+                                 <CheckoutProvider>
+                                    <Slot />
+                                    <AIChatButton />
+                                 </CheckoutProvider>
+                              </CartProvider>
+                           </FavoritesProvider>
+                        </CinematicWrapper>
+                     </ThemeProvider>
+                  </SettingsProvider>
+               </AuthProvider>
+            </QueryClientProvider>
+         </ErrorBoundary>
+      </GestureHandlerRootView>
    )
 }

@@ -311,6 +311,7 @@ const Profile = () => {
     { id: 1, type: "toggle", label: isDark ? "Dark Side" : "Light Side", iconName: isDark ? "moon-outline" : "sunny-outline", value: isDark, onToggle: toggleTheme },
     { id: 2, type: "toggle", label: t('notifications'), iconName: "notifications-outline", value: notifications, onToggle: toggleNotifications },
     { id: 3, type: "link", label: t('language'), iconName: "globe-outline", rightText: language === 'en' ? 'English' : 'العربية', onPress: () => changeLanguage(language === 'en' ? 'ar' : 'en') },
+    { id: 4, type: "link", label: t('help'), iconName: "help-circle-outline", onPress: () => router.push('/screens/HelpScreen') },
   ];
 
 

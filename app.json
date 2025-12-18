@@ -8,6 +8,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "funnyshop",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -36,7 +41,13 @@
     "plugins": [
       "expo-router",
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "@jamsch/expo-speech-recognition",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice search."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

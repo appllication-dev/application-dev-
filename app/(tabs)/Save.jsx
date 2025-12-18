@@ -2,8 +2,8 @@ import { View, Text, StyleSheet, FlatList, StatusBar, Dimensions } from 'react-n
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useFavorites } from '../../src/context/FavoritesContext';
-import FavoriteCard from '../components/FavoriteCard';
-import Feather from 'react-native-vector-icons/Feather';
+import ProductCard from '../components/productCard';
+import Feather from '@expo/vector-icons/Feather';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import PremiumBackground from '../components/PremiumBackground';
 import { useTranslation } from '../../src/hooks/useTranslation';
@@ -14,7 +14,7 @@ const { width } = Dimensions.get('window');
 
 const Save = () => {
     const { colors, theme } = useTheme();
-    const { favorites, loading } = useFavorites();
+    const { favorites, loading, removeFromFavorites } = useFavorites();
     const { t } = useTranslation();
     const isDark = theme === 'dark';
 
@@ -77,7 +77,13 @@ const Save = () => {
                     columnWrapperStyle={styles.columnWrapper}
                     showsVerticalScrollIndicator={false}
                     renderItem={({ item, index }) => (
-                        <FavoriteCard item={item} index={index} isGlass={true} isDark={isDark} />
+                        <View style={{ width: '48%' }}>
+                            <ProductCard
+                                item={item}
+                                onLike={(id) => removeFromFavorites(id)}
+                                index={index}
+                            />
+                        </View>
                     )}
                     ListEmptyComponent={!loading ? renderEmptyState : null}
                 />

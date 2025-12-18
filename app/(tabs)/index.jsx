@@ -17,13 +17,14 @@ import { BorderRadius, Spacing, FontSize } from "../../constants/theme";
 import PremiumBackground from "../components/PremiumBackground";
 import { LinearGradient } from 'expo-linear-gradient';
 import ProductSkeleton from "../components/ProductSkeleton";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { getProducts as fetchProducts } from "../../src/services/firestoreProducts";
 import SearchBar from "../components/SearchBar";
 import { useTranslation } from "../../src/hooks/useTranslation";
 import CoolLoader from "../components/CoolLoader";
 import { useQuery } from '@tanstack/react-query';
 import { RevolutionTheme } from "../../src/theme/RevolutionTheme";
+// VoiceSearchModal removed
 
 const { width } = Dimensions.get('window');
 
@@ -36,17 +37,18 @@ const MyScreen = () => {
     const isDark = theme === 'dark';
 
     const categories = [
-        { name: 'All', icon: 'border-all' },
-        { name: 'Discount', icon: 'percentage' },
-        { name: 'T-shirt', icon: 'tshirt' },
-        { name: 'Hoodie', icon: 'user-astronaut' },
-        { name: 'Hat', icon: 'hard-hat' }
+        { name: t('all'), icon: 'border-all' },
+        { name: t('discount'), icon: 'percentage' },
+        { name: t('tshirt'), icon: 'tshirt' },
+        { name: t('hoodie'), icon: 'user-astronaut' },
+        { name: t('hat'), icon: 'hard-hat' }
     ];
-    const popularSearches = ["T-shirt", "Shoes", "Hoodie", "Watch", "Bag", "Jacket"];
+    const popularSearches = [t('tshirt'), "أحذية", t('hoodie'), "ساعات", "حقائب", "جاكيت"];
 
-    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [selectedCategory, setSelectedCategory] = useState(t('all'));
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearchModal, setShowSearchModal] = useState(false);
+    // const [showVoiceModal, setShowVoiceModal] = useState(false); // Removed
     const [profileImage, setProfileImage] = useState(null);
 
     // Dynamic Theme Colors
@@ -81,6 +83,30 @@ const MyScreen = () => {
         }, [user])
     );
 
+    useFocusEffect(
+        useCallback(() => {
+            // ... existing code ...
+        }, [user])
+    );
+
+    // Handle Voice Search Params
+    const { search } = useLocalSearchParams();
+
+    useEffect(() => {
+        if (search) {
+            setSearchQuery(search);
+            // Optionally open search modal if that's how search works, 
+            // but setting query might be enough if filtered list is shown inline
+            // Based on code, let's also ensure Category is All to search effectively
+            setSelectedCategory(t('all'));
+        }
+    }, [search]);
+
+    // Use local Arabic data directly instead of Firestore
+    // const products = data.products;
+    // const isLoading = false;
+    // const refetch = () => { };
+
     const { data: products = [], isLoading, refetch } = useQuery({
         queryKey: ['products'],
         queryFn: async () => {
@@ -93,6 +119,7 @@ const MyScreen = () => {
         staleTime: Infinity,
         cacheTime: 1000 * 60 * 60 * 24,
     });
+
 
     useFocusEffect(
         useCallback(() => {
@@ -118,7 +145,7 @@ const MyScreen = () => {
             );
         }
 
-        if (selectedCategory !== 'All') {
+        if (selectedCategory !== t('all')) {
             filtered = filtered.filter(product => product.category === selectedCategory);
         }
 
@@ -127,7 +154,7 @@ const MyScreen = () => {
 
     const handleSeeAll = () => {
         setSearchQuery('');
-        setSelectedCategory('All');
+        setSelectedCategory(t('all'));
     };
 
     // Sticky Header Component
@@ -140,6 +167,8 @@ const MyScreen = () => {
                 >
                     <Feather name="search" size={20} color={RevolutionTheme.colors.primary} />
                 </TouchableOpacity>
+
+                {/* Mic Button Removed */}
 
                 <View>
                     <Text style={[styles.headerTitle, { color: RevolutionTheme.colors.primaryDark }]}>{t('shopName')}</Text>
@@ -233,6 +262,8 @@ const MyScreen = () => {
 
             <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <StickyHeader />
+
+                {/* VoiceSearchModal Removed */}
 
                 {/* Search Modal */}
                 <Modal
@@ -331,6 +362,7 @@ const MyScreen = () => {
                                     item={item}
                                     isLiked={item.isLiked}
                                     onLike={handleLike}
+                                    index={index}
                                 />
                             </Animated.View>
                         )}
