@@ -178,6 +178,18 @@ const ProductsDeltScreen = () => {
         } catch (e) { console.error(e); }
     };
 
+    // Calculate Average Rating
+    const [averageRating, setAverageRating] = useState(item.rating?.rate || 0);
+    const [reviewCount, setReviewCount] = useState(item.rating?.count || 0);
+
+    useEffect(() => {
+        if (reviews.length > 0) {
+            const total = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+            setAverageRating((total / reviews.length).toFixed(1));
+            setReviewCount(reviews.length);
+        }
+    }, [reviews]);
+
     const handleSubmitReview = async () => {
         if (!user) return Alert.alert(t('loginRequired'), t('pleaseLoginToReview'));
         if (!comment.trim()) return Alert.alert(t('error'), t('pleaseEnterComment'));
@@ -233,6 +245,13 @@ const ProductsDeltScreen = () => {
     // Cart Animation
     const buttonScale = useSharedValue(1);
     const handleAddTOCart = async () => {
+        // Stock Check
+        const currentStock = item.stock !== undefined ? parseInt(item.stock) : 50;
+        if (currentStock <= 0) {
+            Alert.alert(t('error'), 'This product is out of stock.');
+            return;
+        }
+
         if (!selectedSize || !selectedColor) {
             buttonScale.value = withSequence(
                 withTiming(1.1, { duration: 50 }),
@@ -326,7 +345,7 @@ const ProductsDeltScreen = () => {
                             <View style={styles.ratingRow}>
                                 <Feather name="star" size={14} color="#FFD700" />
                                 <Text style={[styles.ratingText, { color: isDark ? '#CCC' : '#666' }]}>
-                                    {item.rating?.rate || 4.8} ({item.rating?.count || 120} reviews)
+                                    {averageRating} ({reviewCount} reviews)
                                 </Text>
                             </View>
                         </View>
@@ -424,6 +443,21 @@ const ProductsDeltScreen = () => {
                                     </View>
                                 </View>
                                 <Text style={[styles.reviewBody, { color: isDark ? '#CCC' : '#666' }]}>{review.text}</Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+                                    <TouchableOpacity
+                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                                        onPress={() => handleLikeReview(review.id)}
+                                    >
+                                        <Feather
+                                            name="thumbs-up"
+                                            size={14}
+                                            color={likedReviews[review.id] ? RevolutionTheme.colors.primary : (isDark ? '#666' : '#999')}
+                                        />
+                                        <Text style={{ fontSize: 12, color: isDark ? '#AAA' : '#666' }}>
+                                            {review.likes || 0}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         ))}
                     </View>
@@ -445,17 +479,30 @@ const ProductsDeltScreen = () => {
                             onPress={handleAddTOCart}
                         >
                             <LinearGradient
-                                colors={[RevolutionTheme.colors.primary, '#D4AF37']}
+                                colors={
+                                    (item.stock !== undefined && item.stock <= 0)
+                                        ? ['#999', '#777']
+                                        : [RevolutionTheme.colors.primary, '#D4AF37']
+                                }
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.addToCartBtn}
                             >
                                 <Feather name="shopping-bag" size={20} color="#000" style={{ marginRight: 8 }} />
-                                <Text style={styles.addToCartText}>{t('addToCart')}</Text>
+                                <Text style={styles.addToCartText}>
+                                    {(item.stock !== undefined && item.stock <= 0) ? 'OUT OF STOCK' : t('addToCart')}
+                                </Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
+
+                {/* Low Stock Warning */}
+                {(item.stock > 0 && item.stock < 5) && (
+                    <View style={{ position: 'absolute', bottom: 90, alignSelf: 'center', backgroundColor: 'rgba(255, 0, 0, 0.8)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Only {item.stock} left in stock!</Text>
+                    </View>
+                )}
             </BlurView>
 
             {/* Modals (Review & Success) - Simplified for brevity but functional */}

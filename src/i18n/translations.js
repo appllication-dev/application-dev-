@@ -119,6 +119,7 @@ export const translations = {
         rateApp: 'Rate App',
         inviteFriends: 'Invite Friends',
         privacyPolicy: 'Privacy Policy',
+        termsOfService: 'Terms of Service',
         termsConditions: 'Terms & Conditions',
         aboutUs: 'About Us',
 
@@ -344,6 +345,20 @@ export const translations = {
         deleteReview: 'Delete Review',
         confirmDeleteReview: 'Are you sure you want to delete this review?',
         reviewDeleted: 'Review deleted successfully',
+
+        // ============================================
+        // 🔍 Search & Filters
+        // ============================================
+        filters: 'Filters',
+        sortBy: 'Sort By',
+        priceRange: 'Price Range',
+        category: 'Category',
+        onlyInStock: 'Only In Stock',
+        applyFilters: 'Apply Filters',
+        resetFilters: 'Reset',
+        priceLowToHigh: 'Price: Low to High',
+        priceHighToLow: 'Price: High to Low',
+        help: 'Help',
     },
 
     ar: {
@@ -523,6 +538,7 @@ export const translations = {
         rateApp: 'قيّم التطبيق',
         inviteFriends: 'دعوة الأصدقاء',
         privacyPolicy: 'سياسة الخصوصية',
+        termsOfService: 'شروط الخدمة',
         termsConditions: 'الشروط والأحكام',
         aboutUs: 'من نحن',
 
@@ -683,6 +699,20 @@ export const translations = {
         deleteReview: 'حذف التقييم',
         confirmDeleteReview: 'هل أنت متأكد من حذف هذا التقييم؟',
         reviewDeleted: 'تم حذف التقييم بنجاح',
+
+        // ============================================
+        // 🔍 Search & Filters
+        // ============================================
+        filters: 'الفلاتر',
+        sortBy: 'ترتيب حسب',
+        priceRange: 'نطاق السعر',
+        category: 'الفئة',
+        onlyInStock: 'المتوفر فقط',
+        applyFilters: 'تطبيق الفلاتر',
+        resetFilters: 'إعادة تعيين',
+        priceLowToHigh: 'السعر: من الأقل للأعلى',
+        priceHighToLow: 'السعر: من الأعلى للأقل',
+        help: 'المساعدة',
     }
 };
 

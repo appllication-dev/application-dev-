@@ -20,21 +20,22 @@ import { validateEmail, validatePassword } from "../../../src/utils/validation";
 import { rateLimiters, sanitizeEmail, cleanInput } from "../../../src/utils/security";
 import { handleError, ERROR_TYPES } from "../../../src/utils/errorHandler";
 import { useTranslation } from "../../../src/hooks/useTranslation";
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 
+WebBrowser.maybeCompleteAuthSession();
 
 const LoginScreen = () => {
     const router = useRouter();
     const navigation = useNavigation();
-    const { login, clearAllUsers } = useAuth();
+    const { login, loginWithGoogle } = useAuth();
     const { t } = useTranslation();
 
     // Helper for navigation
     const handleAuthNavigation = () => {
-        // Navigate to the main app (Home)
         router.replace('/(tabs)');
     };
-
-
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -45,7 +46,53 @@ const LoginScreen = () => {
 
     const passwordRef = useRef(null);
 
-    // Validate inputs before submission
+
+    // Google Auth Request
+    const redirectUri = makeRedirectUri({
+        useProxy: true
+    });
+
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        clientId: '1076765269610-u5to0vkmrfc2b82f8hvjbg6jfaog3oom.apps.googleusercontent.com',
+        redirectUri: redirectUri,
+    });
+
+    const handleGoogleLogin = () => {
+        // DEBUG: Verify the URI generated.
+        // If correct (after eas init), it should be https://auth.expo.io/@owner/slug
+        Alert.alert(
+            "Debug Mode",
+            `Redirect URI: ${redirectUri}\n\nPlease verify this matches Google Console.`,
+            [
+                { text: "Continue", onPress: () => promptAsync() }
+            ]
+        );
+    };
+
+    React.useEffect(() => {
+        if (response?.type === 'success') {
+            const { id_token } = response.params;
+            handleGoogleSignIn(id_token);
+        }
+    }, [response]);
+
+    const handleGoogleSignIn = async (idToken) => {
+        if (idToken) {
+            setLoading(true);
+            try {
+                const result = await loginWithGoogle(idToken);
+                if (result.success) {
+                    handleAuthNavigation();
+                }
+            } catch (error) {
+                Alert.alert("Google Sign-In Error", error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    // Validate inputs
     const validateInputs = () => {
         const newErrors = {};
 
@@ -64,7 +111,6 @@ const LoginScreen = () => {
     };
 
     const handleLogin = async () => {
-
         // Check rate limiting
         if (!rateLimiters.login.isAllowed('login_attempt')) {
             const waitTime = Math.ceil(rateLimiters.login.getTimeUntilReset('login_attempt') / 1000);
@@ -87,103 +133,52 @@ const LoginScreen = () => {
             const sanitizedEmail = sanitizeEmail(email);
             const cleanedPassword = cleanInput(password);
 
-
-
-            // Create a timeout promise (15 seconds)
+            // Timeout promise
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => {
                     reject(new Error("LOGIN_TIMEOUT"));
                 }, 15000);
             });
 
-            // Race between login and timeout
+            // Race Login
             const success = await Promise.race([
                 login(sanitizedEmail, cleanedPassword),
                 timeoutPromise
             ]);
 
-
-
             if (success) {
-                // Reset rate limiter on successful login
                 rateLimiters.login.reset('login_attempt');
                 setLoginAttempts(0);
-
-                // Ensure loading is off before navigation (good practice)
                 setLoading(false);
                 handleAuthNavigation();
             } else {
-                console.log("🚫 [LoginScreen] Login returned false (failure).");
                 setLoginAttempts(prev => prev + 1);
-
-                if (loginAttempts >= 2) {
-                    Alert.alert(
-                        "Login Failed",
-                        "Invalid email or password. If you have an old account, you may need to reset and create a new one.",
-                        [
-                            { text: "OK", style: "cancel" },
-                            {
-                                text: "Reset & Create New",
-                                style: "destructive",
-                                onPress: handleResetData
-                            }
-                        ]
-                    );
-                } else {
-                    Alert.alert(
-                        "Login Failed",
-                        `Invalid email or password. ${3 - loginAttempts - 1} attempts remaining.`
-                    );
-                }
+                Alert.alert(
+                    "Login Failed",
+                    `Invalid email or password. ${3 - loginAttempts - 1} attempts remaining.`
+                );
             }
         } catch (error) {
-            console.error("💥 [LoginScreen] Error caught:", error);
-
+            console.error("💥 [Login] Error:", error);
             if (error.message === "LOGIN_TIMEOUT") {
-                Alert.alert("Connection Timeout", "Login is taking too long. Please check your internet connection.");
+                Alert.alert("Connection Timeout", "Login took too long.");
             } else {
                 handleError(error, {
                     context: 'LoginScreen',
-                    onAuthError: () => {
-                        Alert.alert("Authentication Error", "Please check your credentials and try again.");
-                    },
-                    onNetworkError: () => {
-                        Alert.alert("Connection Error", "Please check your internet connection.");
-                    },
-                    onError: () => {
-                        Alert.alert("Error", "An unexpected error occurred. Please try again.");
-                    }
+                    onAuthError: () => Alert.alert("Authentication Error", "Check credentials."),
+                    onNetworkError: () => Alert.alert("Connection Error", "Check internet."),
+                    onError: () => Alert.alert("Error", "Unexpected error occurred.")
                 });
             }
         } finally {
-            console.log("🏁 [LoginScreen] Finally block - stopping loader");
             setLoading(false);
         }
-    };
-
-    const handleResetData = async () => {
-        Alert.alert(
-            "Reset All Data",
-            "This will delete all accounts. You'll need to create a new account. Continue?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Reset",
-                    style: "destructive",
-                    onPress: async () => {
-                        await clearAllUsers();
-                        Alert.alert("Success", "Data cleared. Please create a new account.");
-                        router.replace("/screens/auth/RegisterScreen");
-                    }
-                }
-            ]
-        );
     };
 
     return (
         <SafeAreaView style={styles.container}>
             <LinearGradient
-                colors={['#000000', '#121212', '#1C1C1E']} // Luxury Black Gradient
+                colors={['#000000', '#121212', '#1C1C1E']} // Premium Black Gradient
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
@@ -271,6 +266,13 @@ const LoginScreen = () => {
                                 {errors.password}
                             </Animated.Text>
                         )}
+                        {/* Forgot Password Link */}
+                        <TouchableOpacity
+                            onPress={() => router.push("/screens/auth/ForgotPasswordScreen")}
+                            style={styles.forgotPasswordContainer}
+                        >
+                            <Text style={styles.forgotPasswordText}>{t('forgotPassword') || 'Forgot Password?'}</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Login Button */}
@@ -287,7 +289,18 @@ const LoginScreen = () => {
                         )}
                     </TouchableOpacity>
 
-
+                    {/* Google Login Button */}
+                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 10 }}>Or sign in with</Text>
+                        <TouchableOpacity
+                            onPress={handleGoogleLogin}
+                            disabled={!request}
+                            style={styles.googleButton}
+                        >
+                            <Ionicons name="logo-google" size={20} color="black" style={{ marginRight: 10 }} />
+                            <Text style={styles.googleButtonText}>Sign in with Google</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     {/* Register Link */}
                     <View style={styles.registerContainer}>
@@ -380,8 +393,8 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 20,
-        marginBottom: 24,
+        marginTop: 10,
+        marginBottom: 20,
     },
     loginButtonText: {
         color: '#000000', // Black text on Gold button
@@ -415,6 +428,31 @@ const styles = StyleSheet.create({
     },
     loginButtonDisabled: {
         opacity: 0.7,
+    },
+    forgotPasswordContainer: {
+        alignItems: 'flex-end',
+        marginTop: 8,
+    },
+    forgotPasswordText: {
+        color: '#D4AF37', // Gold
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    googleButton: {
+        backgroundColor: 'white',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 4,
+        width: '100%',
+        maxWidth: 280,
+    },
+    googleButtonText: {
+        color: 'black',
+        fontWeight: '600',
+        fontSize: 16,
     },
 });
 

@@ -9,10 +9,11 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 const Category = ({ item, selectedCategory, setSelectedCategory }) => {
     const { colors } = useTheme();
-    // Support both string or object with key/icon
-    const categoryName = typeof item === 'string' ? item : item.name;
+    // Support both old format (name) and new format (id + label)
+    const categoryId = typeof item === 'string' ? item : (item.id || item.name);
+    const categoryLabel = typeof item === 'object' ? (item.label || item.name) : item;
     const categoryIcon = typeof item === 'object' ? item.icon : null;
-    const isSelected = selectedCategory === categoryName;
+    const isSelected = selectedCategory === categoryId;
     const scale = useSharedValue(1);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -29,7 +30,7 @@ const Category = ({ item, selectedCategory, setSelectedCategory }) => {
 
     return (
         <AnimatedTouchable
-            onPress={() => setSelectedCategory(categoryName)}
+            onPress={() => setSelectedCategory(categoryId)}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             style={[
@@ -59,7 +60,7 @@ const Category = ({ item, selectedCategory, setSelectedCategory }) => {
                         },
                     ]}
                 >
-                    {categoryName}
+                    {categoryLabel}
                 </Text>
             </View>
         </AnimatedTouchable>

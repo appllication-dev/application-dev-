@@ -20,6 +20,7 @@ import ProductSkeleton from "../components/ProductSkeleton";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { getProducts as fetchProducts } from "../../src/services/firestoreProducts";
 import SearchBar from "../components/SearchBar";
+import SearchFilterModal from "../components/SearchFilterModal";
 import { useTranslation } from "../../src/hooks/useTranslation";
 import CoolLoader from "../components/CoolLoader";
 import { useQuery } from '@tanstack/react-query';
@@ -37,17 +38,19 @@ const MyScreen = () => {
     const isDark = theme === 'dark';
 
     const categories = [
-        { name: t('all'), icon: 'border-all' },
-        { name: t('discount'), icon: 'percentage' },
-        { name: t('tshirt'), icon: 'tshirt' },
-        { name: t('hoodie'), icon: 'user-astronaut' },
-        { name: t('hat'), icon: 'hard-hat' }
+        { id: 'all', label: t('all'), icon: 'border-all' },
+        { id: 'Discount', label: t('discount'), icon: 'percentage' },
+        { id: 'T-shirt', label: t('tshirt'), icon: 'tshirt' },
+        { id: 'Hoodie', label: t('hoodie'), icon: 'user-astronaut' },
+        { id: 'Hat', label: t('hat'), icon: 'hard-hat' }
     ];
     const popularSearches = [t('tshirt'), "أحذية", t('hoodie'), "ساعات", "حقائب", "جاكيت"];
 
-    const [selectedCategory, setSelectedCategory] = useState(t('all'));
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
+    const [filterParams, setFilterParams] = useState({});
     // const [showVoiceModal, setShowVoiceModal] = useState(false); // Removed
     const [profileImage, setProfileImage] = useState(null);
 
@@ -98,19 +101,20 @@ const MyScreen = () => {
             // Optionally open search modal if that's how search works, 
             // but setting query might be enough if filtered list is shown inline
             // Based on code, let's also ensure Category is All to search effectively
-            setSelectedCategory(t('all'));
+            setSelectedCategory('all');
         }
     }, [search]);
 
-    // Use local Arabic data directly instead of Firestore
+    // Local data disabled - using Firestore for products added by user
     // const products = data.products;
     // const isLoading = false;
     // const refetch = () => { };
 
+    // Firestore fetch enabled - to get products added by user
     const { data: products = [], isLoading, refetch } = useQuery({
-        queryKey: ['products'],
+        queryKey: ['products', filterParams],
         queryFn: async () => {
-            const result = await fetchProducts();
+            const result = await fetchProducts({ ...filterParams, limitCount: 50 });
             if (result.success) {
                 return result.products;
             }
@@ -119,7 +123,6 @@ const MyScreen = () => {
         staleTime: Infinity,
         cacheTime: 1000 * 60 * 60 * 24,
     });
-
 
     useFocusEffect(
         useCallback(() => {
@@ -135,8 +138,9 @@ const MyScreen = () => {
     };
 
     const displayedProducts = useMemo(() => {
-        let filtered = products;
+        let filtered = [...products]; // Create a copy to avoid mutating original
 
+        // Search filter
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(product =>
@@ -145,16 +149,43 @@ const MyScreen = () => {
             );
         }
 
-        if (selectedCategory !== t('all')) {
+        // Category filter
+        if (selectedCategory !== 'all') {
             filtered = filtered.filter(product => product.category === selectedCategory);
         }
 
+        // Filter from modal
+        if (filterParams.category) {
+            filtered = filtered.filter(product => product.category === filterParams.category);
+        }
+
+        // Price range filter
+        if (filterParams.minPrice) {
+            filtered = filtered.filter(product => product.price >= filterParams.minPrice);
+        }
+        if (filterParams.maxPrice) {
+            filtered = filtered.filter(product => product.price <= filterParams.maxPrice);
+        }
+
+        // In stock filter
+        if (filterParams.onlyInStock) {
+            filtered = filtered.filter(product => product.stock > 0);
+        }
+
+        // Sorting
+        if (filterParams.sortBy === 'price_low') {
+            filtered.sort((a, b) => a.price - b.price);
+        } else if (filterParams.sortBy === 'price_high') {
+            filtered.sort((a, b) => b.price - a.price);
+        }
+        // 'newest' is default order from data, no sorting needed
+
         return filtered;
-    }, [products, selectedCategory, searchQuery]);
+    }, [products, selectedCategory, searchQuery, filterParams]);
 
     const handleSeeAll = () => {
         setSearchQuery('');
-        setSelectedCategory(t('all'));
+        setSelectedCategory('all');
     };
 
     // Sticky Header Component
@@ -166,6 +197,13 @@ const MyScreen = () => {
                     onPress={() => setShowSearchModal(true)}
                 >
                     <Feather name="search" size={20} color={RevolutionTheme.colors.primary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.iconButton, { backgroundColor: themeIconBg, borderColor: themeBorder, marginLeft: 8 }]}
+                    onPress={() => setShowFilterModal(true)}
+                >
+                    <Feather name="sliders" size={20} color={RevolutionTheme.colors.primary} />
                 </TouchableOpacity>
 
                 {/* Mic Button Removed */}
@@ -231,7 +269,7 @@ const MyScreen = () => {
                             setSelectedCategory={setSelectedCategory}
                         />
                     )}
-                    keyExtractor={(item) => item.name}
+                    keyExtractor={(item) => item.id}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                 />
@@ -337,6 +375,13 @@ const MyScreen = () => {
                         </SafeAreaView>
                     </View>
                 </Modal>
+
+                <SearchFilterModal
+                    visible={showFilterModal}
+                    onClose={() => setShowFilterModal(false)}
+                    onApply={setFilterParams}
+                    initialFilters={filterParams}
+                />
 
                 {isLoading ? (
                     <View style={{ paddingHorizontal: 16, paddingTop: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>

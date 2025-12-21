@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useCheckout } from '../../src/context/CheckoutContext';
-import { getProducts, deleteProduct, clearAllLocalReviews, seedProductsToFirestore } from '../../src/services/firestoreProducts';
+import { getProducts, clearAllLocalReviews } from '../../src/services/firestoreProducts';
 import { getAllOrders } from '../../src/services/firestoreOrders';
 import { Feather } from '@expo/vector-icons';
 import { FontSize, Spacing, BorderRadius } from '../../constants/theme';
@@ -16,6 +16,14 @@ import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'reac
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { RevolutionTheme } from "../../src/theme/RevolutionTheme";
 import PremiumBackground from "../components/PremiumBackground";
+
+// Premium Admin Components
+import AnimatedCounter from '../components/admin/AnimatedCounter';
+import RevenueChart from '../components/admin/RevenueChart';
+import CategoryPieChart from '../components/admin/CategoryPieChart';
+import ActivityFeed from '../components/admin/ActivityFeed';
+import StockAlerts from '../components/admin/StockAlerts';
+import TopProducts from '../components/admin/TopProducts';
 
 const { width } = Dimensions.get('window');
 
@@ -117,72 +125,8 @@ const AdminDashboard = () => {
         p.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleDelete = (id, title) => {
-        Alert.alert(
-            t('deleteProduct'),
-            t('deleteConfirm', { title }),
-            [
-                { text: t('cancel'), style: 'cancel' },
-                {
-                    text: t('delete'),
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteProduct(id);
-                            loadProducts(); // Refresh list
-                        } catch (error) {
-                            Alert.alert(t('error'), t('deleteFailed'));
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
-    const handleEdit = (product) => {
-        router.push({
-            pathname: '/screens/admin/AddProductScreen',
-            params: {
-                id: product.id,
-                title: product.title,
-                price: product.price,
-                category: product.category,
-                description: product.description,
-                stock: product.stock,
-                image: product.image,
-                images: JSON.stringify(product.images || [])
-            }
-        });
-    };
-
-    const handleAddNew = () => {
-        router.push('/screens/admin/AddProductScreen');
-    };
-
-    const handleSync = () => {
-        Alert.alert(
-            t('syncData') || 'Sync Data',
-            t('syncDataConfirm') || 'Upload all local products to the shared database? This makes them visible to everyone.',
-            [
-                { text: t('cancel'), style: 'cancel' },
-                {
-                    text: t('sync') || 'Sync',
-                    onPress: async () => {
-                        setLoading(true);
-                        try {
-                            const result = await seedProductsToFirestore();
-                            Alert.alert(t('success'), `${t('success')} ${result.count}`);
-                            loadProducts();
-                        } catch (error) {
-                            Alert.alert('Error', 'Sync failed: ' + error.message);
-                        } finally {
-                            setLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
-    };
+    // Handlers removed for external management
+    // const handleDelete, handleEdit, handleAddNew, handleSync...
 
     // --- Components ---
 
@@ -247,110 +191,155 @@ const AdminDashboard = () => {
         </Animated.View>
     );
 
-    const renderDashboard = () => (
-        <ScrollView contentContainerStyle={styles.dashboardContent} showsVerticalScrollIndicator={false}>
-            {/* Arab World Sales Map */}
-            <View style={styles.globeSection}>
-                <ArabSalesMap data={mapData} isDark={isDark} />
+    const renderDashboard = () => {
+        // Calculate category data for pie chart from actual products
+        const categoryCount = products.reduce((acc, product) => {
+            const cat = product.category || 'Other';
+            if (!acc[cat]) acc[cat] = 0;
+            acc[cat]++;
+            return acc;
+        }, {});
 
-                {/* Sales Mapping List */}
-                <View style={[styles.mappingContainer, { backgroundColor: themeCard, borderColor: themeBorder }]}>
-                    <Text style={[styles.mappingTitle, { color: themeText }]}>{t('salesByCountry')}</Text>
-                    {countryStats.map((stat, index) => (
-                        <View key={index} style={styles.countryRow}>
-                            {/* Flag Placeholder or Icon */}
-                            <View style={[styles.flagCircle, { backgroundColor: `hsl(${index * 60}, 70%, 50%)` }]}>
-                                <Text style={styles.flagText}>{stat.name.substring(0, 2).toUpperCase()}</Text>
-                            </View>
+        const categoryChartData = Object.entries(categoryCount).map(([name, value], index) => {
+            const colors = ['#10B981', '#6366F1', '#F59E0B', '#EC4899', '#3B82F6'];
+            return { name, value, color: colors[index % colors.length] };
+        });
 
-                            <View style={styles.countryInfo}>
-                                <View style={styles.countryHeader}>
-                                    <Text style={[styles.countryName, { color: themeText }]}>{stat.name}</Text>
-                                    <Text style={[styles.countryValue, { color: themeText }]}>${stat.revenue.toFixed(0)}</Text>
-                                </View>
-                                {/* Progress Bar */}
-                                <View style={styles.progressBarBg}>
-                                    <View
-                                        style={[
-                                            styles.progressBarFill,
-                                            {
-                                                width: `${(stat.revenue / maxRevenue) * 100}%`,
-                                                backgroundColor: index === 0 ? '#10B981' : index === 1 ? '#F59E0B' : index === 2 ? '#3B82F6' : '#6366F1'
-                                            }
-                                        ]}
-                                    />
-                                </View>
-                            </View>
-                        </View>
-                    ))}
+        // Calculate revenue data for chart (last 7 days simulation based on orders)
+        const revenueChartData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+            // Distribute actual revenue across days for demo
+            const dailyRevenue = allOrders.length > 0
+                ? parseFloat(totalRevenue) / 7 * (0.5 + Math.random())
+                : 0;
+            return { day, value: Math.round(dailyRevenue) };
+        });
+
+        return (
+            <ScrollView contentContainerStyle={styles.dashboardContent} showsVerticalScrollIndicator={false}>
+                {/* Stats Grid - Bento Style */}
+                <Text style={[styles.sectionTitle, { color: themeText }]}>{t('overview')}</Text>
+                <View style={styles.statsGrid}>
+                    {/* Main Large Card with Animated Counter */}
+                    <StatCard
+                        title={t('totalRevenue')}
+                        value={`$${totalRevenue}`}
+                        icon="dollar-sign"
+                        gradient={['#10B981', '#059669']}
+                        fullWidth={true}
+                        showChart={true}
+                    />
+
+                    {/* Smaller Cards */}
+                    <View style={styles.rowGrid}>
+                        <StatCard
+                            title={t('ordersTitle')}
+                            value={totalOrders}
+                            icon="shopping-bag"
+                            gradient={['#6366F1', '#4F46E5']}
+                        />
+                        <StatCard
+                            title={t('products')}
+                            value={totalProducts}
+                            icon="box"
+                            gradient={['#F59E0B', '#D97706']}
+                        />
+                    </View>
                 </View>
-            </View>
 
-            {/* Stats Grid - Bento Style */}
-            <Text style={[styles.sectionTitle, { color: themeText }]}>{t('overview')}</Text>
-            <View style={styles.statsGrid}>
-                {/* Main Large Card */}
-                <StatCard
-                    title={t('totalRevenue')}
-                    value={`$${totalRevenue}`}
-                    icon="dollar-sign"
-                    gradient={['#10B981', '#059669']}
-                    fullWidth={true}
-                    showChart={true}
+                {/* Revenue Trend Chart */}
+                <RevenueChart
+                    data={revenueChartData}
+                    isDark={isDark}
+                    title="Revenue Trend (7 Days)"
                 />
 
-                {/* Smaller Cards */}
-                <View style={styles.rowGrid}>
-                    <StatCard
-                        title={t('ordersTitle')}
-                        value={totalOrders}
-                        icon="shopping-bag"
-                        gradient={['#6366F1', '#4F46E5']}
-                    />
-                    <StatCard
-                        title={t('products')}
-                        value={totalProducts}
-                        icon="box"
-                        gradient={['#F59E0B', '#D97706']}
-                    />
+                {/* Sales by Category Donut Chart */}
+                <CategoryPieChart
+                    data={categoryChartData}
+                    isDark={isDark}
+                    title="Sales by Category"
+                />
+
+                {/* Top Selling Products */}
+                <TopProducts
+                    products={products}
+                    orders={allOrders}
+                    isDark={isDark}
+                    title="Top Selling Products"
+                />
+
+                {/* Stock Alerts */}
+                <StockAlerts
+                    products={products}
+                    isDark={isDark}
+                    title="Stock Alerts"
+                    threshold={10}
+                />
+
+                {/* Activity Feed - Recent Orders */}
+                <ActivityFeed
+                    orders={allOrders}
+                    isDark={isDark}
+                    title="Recent Activity"
+                    maxItems={5}
+                />
+
+                {/* Arab World Sales Map */}
+                <View style={styles.globeSection}>
+                    <ArabSalesMap data={mapData} isDark={isDark} />
+
+                    {/* Sales Mapping List */}
+                    <View style={[styles.mappingContainer, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                        <Text style={[styles.mappingTitle, { color: themeText }]}>{t('salesByCountry')}</Text>
+                        {countryStats.map((stat, index) => (
+                            <View key={index} style={styles.countryRow}>
+                                {/* Flag Placeholder or Icon */}
+                                <View style={[styles.flagCircle, { backgroundColor: `hsl(${index * 60}, 70%, 50%)` }]}>
+                                    <Text style={styles.flagText}>{stat.name.substring(0, 2).toUpperCase()}</Text>
+                                </View>
+
+                                <View style={styles.countryInfo}>
+                                    <View style={styles.countryHeader}>
+                                        <Text style={[styles.countryName, { color: themeText }]}>{stat.name}</Text>
+                                        <Text style={[styles.countryValue, { color: themeText }]}>${stat.revenue.toFixed(0)}</Text>
+                                    </View>
+                                    {/* Progress Bar */}
+                                    <View style={styles.progressBarBg}>
+                                        <View
+                                            style={[
+                                                styles.progressBarFill,
+                                                {
+                                                    width: `${(stat.revenue / maxRevenue) * 100}%`,
+                                                    backgroundColor: index === 0 ? '#10B981' : index === 1 ? '#F59E0B' : index === 2 ? '#3B82F6' : '#6366F1'
+                                                }
+                                            ]}
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
                 </View>
-            </View>
 
-            {/* Quick Actions */}
-            <Text style={[styles.sectionTitle, { color: themeText }]}>{t('quickActions')}</Text>
-            <View style={styles.quickActionsGrid}>
-                <TouchableOpacity style={[styles.quickActionBtn, { backgroundColor: themeCard }]} onPress={handleAddNew}>
-                    <LinearGradient
-                        colors={['#3B82F6', '#2563EB']}
-                        style={styles.actionIconBg}
-                    >
-                        <Feather name="plus" size={24} color="#fff" />
-                    </LinearGradient>
-                    <Text style={[styles.quickActionText, { color: themeText }]}>{t('addProduct')}</Text>
-                </TouchableOpacity>
+                {/* Quick Actions */}
+                <Text style={[styles.sectionTitle, { color: themeText }]}>{t('quickActions')}</Text>
+                <View style={styles.quickActionsGrid}>
+                    {/* Read Only - Orders View */}
+                    <TouchableOpacity style={[styles.quickActionBtn, { backgroundColor: themeCard }]} onPress={() => setActiveTab('orders')}>
+                        <LinearGradient
+                            colors={['#14B8A6', '#0D9488']}
+                            style={styles.actionIconBg}
+                        >
+                            <Feather name="list" size={24} color="#fff" />
+                        </LinearGradient>
+                        <Text style={[styles.quickActionText, { color: themeText }]}>{t('viewOrders')}</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity style={[styles.quickActionBtn, { backgroundColor: themeCard }]} onPress={handleSync}>
-                    <LinearGradient
-                        colors={['#8B5CF6', '#7C3AED']}
-                        style={styles.actionIconBg}
-                    >
-                        <Feather name="cloud" size={24} color="#fff" />
-                    </LinearGradient>
-                    <Text style={[styles.quickActionText, { color: themeText }]}>{t('syncData')}</Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity style={[styles.quickActionBtn, { backgroundColor: themeCard }]} onPress={() => setActiveTab('orders')}>
-                    <LinearGradient
-                        colors={['#14B8A6', '#0D9488']}
-                        style={styles.actionIconBg}
-                    >
-                        <Feather name="list" size={24} color="#fff" />
-                    </LinearGradient>
-                    <Text style={[styles.quickActionText, { color: themeText }]}>{t('viewOrders')}</Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
-    );
+                </View>
+            </ScrollView>
+        );
+    };
 
     // --- Render Items ---
     const renderProductItem = ({ item }) => (
@@ -364,18 +353,7 @@ const AdminDashboard = () => {
                 </View>
             </View>
             <View style={styles.actions}>
-                <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: themeBg }]}
-                    onPress={() => handleEdit(item)}
-                >
-                    <Feather name="edit-2" size={16} color={themeText} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: '#fee2e2' }]}
-                    onPress={() => handleDelete(item.id, item.title)}
-                >
-                    <Feather name="trash-2" size={16} color="#ef4444" />
-                </TouchableOpacity>
+                {/* Read-Only View */}
             </View>
         </View>
     );
@@ -433,7 +411,7 @@ const AdminDashboard = () => {
 
                 {/* Custom Tab Bar */}
                 <View style={[styles.tabContainer, { backgroundColor: themeCard }]}>
-                    {['dashboard', 'products', 'orders'].map((tab) => (
+                    {['dashboard', 'orders'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
                             style={[
@@ -453,26 +431,7 @@ const AdminDashboard = () => {
                     ))}
                 </View>
 
-                {/* Search Bar for Products */}
-                {activeTab === 'products' && (
-                    <View style={styles.searchWrapper}>
-                        <View style={[styles.searchContainer, { backgroundColor: themeCard, borderColor: themeBorder }]}>
-                            <Feather name="search" size={20} color={themeTextSecondary} />
-                            <TextInput
-                                style={[styles.searchInput, { color: themeText }]}
-                                placeholder={t('searchPlaceholder')}
-                                placeholderTextColor={themeTextSecondary}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                    <Feather name="x" size={18} color={themeTextSecondary} />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-                )}
+
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
@@ -490,24 +449,7 @@ const AdminDashboard = () => {
                             </ScrollView>
                         )}
 
-                        {activeTab === 'products' && (
-                            <FlatList
-                                key={`products-list-${activeTab}`}
-                                data={filteredProducts}
-                                renderItem={renderProductItem}
-                                keyExtractor={item => item.id.toString()}
-                                contentContainerStyle={styles.listContent}
-                                showsVerticalScrollIndicator={false}
-                                numColumns={1}
-                                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={RevolutionTheme.colors.primary} />}
-                                ListEmptyComponent={
-                                    <View style={styles.emptyState}>
-                                        <Feather name="box" size={48} color={themeTextSecondary} />
-                                        <Text style={[styles.emptyText, { color: themeTextSecondary }]}>{t('noProductsFound')}</Text>
-                                    </View>
-                                }
-                            />
-                        )}
+
 
                         {activeTab === 'orders' && (
                             <FlatList

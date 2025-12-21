@@ -302,7 +302,7 @@ const Profile = () => {
     { id: 1, icon: 'receipt-outline', label: t('orders'), count: userStats.totalOrders, onPress: () => router.push('/(tabs)/Basket') },
     { id: 2, icon: 'heart-outline', label: t('favorites'), count: favorites.length, onPress: () => router.push('/(tabs)/Save') },
     { id: 3, icon: 'location-outline', label: t('addresses'), count: savedAddresses.length, onPress: () => setShowAddresses(true) },
-    { id: 4, icon: 'create-outline', label: t('editProfile'), onPress: () => navigation.navigate('EditProfile') },
+    { id: 4, icon: 'create-outline', label: t('editProfile'), onPress: () => router.push('/screens/profile/EditProfileScreen') },
     { id: 5, icon: 'card-outline', label: t('paymentMethods'), count: savedPaymentMethods.length, onPress: () => setShowPayments(true) },
   ];
 
@@ -312,6 +312,9 @@ const Profile = () => {
     { id: 2, type: "toggle", label: t('notifications'), iconName: "notifications-outline", value: notifications, onToggle: toggleNotifications },
     { id: 3, type: "link", label: t('language'), iconName: "globe-outline", rightText: language === 'en' ? 'English' : 'العربية', onPress: () => changeLanguage(language === 'en' ? 'ar' : 'en') },
     { id: 4, type: "link", label: t('help'), iconName: "help-circle-outline", onPress: () => router.push('/screens/HelpScreen') },
+    { id: 5, type: "link", label: t('privacyPolicy') || 'Privacy Policy', iconName: "shield-checkmark-outline", onPress: () => router.push('/screens/legal/PrivacyPolicyScreen') },
+    { id: 6, type: "link", label: t('termsOfService') || 'Terms of Service', iconName: "document-text-outline", onPress: () => router.push('/screens/legal/TermsOfServiceScreen') },
+    { id: 7, type: "link", label: t('deleteAccount') || 'Delete Account', iconName: "trash-outline", onPress: () => Alert.alert("Delete Account", "This action cannot be undone.", [{ text: "Cancel" }, { text: "Delete", style: "destructive", onPress: () => deleteAccount() }]) },
   ];
 
 

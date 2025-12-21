@@ -172,8 +172,6 @@ const RegisterScreen = () => {
                     Alert.alert("Validation Error", err.message);
                 },
                 onNetworkError: () => {
-                    // Soften the blow, or better yet, retry automatically?
-                    // For now, respect user's "strong internet" claim and don't blame them.
                     Alert.alert("Notice", "Connecting to server took longer than expected. Please try again.");
                 },
                 onError: () => {
@@ -188,7 +186,7 @@ const RegisterScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <LinearGradient
-                colors={['#0B1121', '#1C2541', '#0f172a']} // Navy Gradient
+                colors={['#000000', '#121212', '#1C1C1E']} // Premium Black Gradient
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
@@ -512,7 +510,7 @@ const styles = StyleSheet.create({
         minWidth: 50,
     },
     registerButton: {
-        backgroundColor: '#fff',
+        backgroundColor: '#D4AF37', // Gold Button
         height: 56,
         borderRadius: 16,
         alignItems: 'center',
@@ -524,7 +522,7 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     registerButtonText: {
-        color: '#0B1121', // Navy
+        color: '#000000', // Black text on Gold button
         fontSize: 18,
         fontWeight: '700',
     },

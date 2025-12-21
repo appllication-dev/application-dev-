@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router'; // Updated
 import { useTheme } from '../../../src/context/ThemeContext';
-import { addProduct, updateProduct } from '../../../src/services/firestoreProducts'; // Updated
+import { addProduct, updateProduct, refillAllProductsStock } from '../../../src/services/firestoreProducts'; // Updated
 import Feather from 'react-native-vector-icons/Feather';
 import { FontSize, Spacing, BorderRadius } from '../../../constants/theme';
 import { useTranslation } from '../../../src/hooks/useTranslation';
@@ -103,7 +103,22 @@ const AddProductScreen = () => {
                 <Text style={[styles.title, { color: colors.text }]}>
                     {isEditing ? 'Edit Product' : 'Add New Product'}
                 </Text>
-                <View style={{ width: 40 }} />
+                <TouchableOpacity onPress={async () => {
+                    Alert.alert('Refill All Stock', 'Are you sure you want to set stock to 50 for ALL products?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Yes', onPress: async () => {
+                                setLoading(true);
+                                const res = await refillAllProductsStock(50);
+                                setLoading(false);
+                                if (res.success) Alert.alert('Success', `Refilled ${res.count} products`);
+                                else Alert.alert('Error', res.error);
+                            }
+                        }
+                    ]);
+                }}>
+                    <Feather name="package" size={24} color={colors.primary} />
+                </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -197,7 +212,7 @@ const AddProductScreen = () => {
                 </TouchableOpacity>
 
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 

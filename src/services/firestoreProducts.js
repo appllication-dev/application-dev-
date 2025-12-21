@@ -58,6 +58,86 @@ const loadLocalProducts = async () => {
 const PRODUCTS_COLLECTION = 'products';
 const CATEGORIES_COLLECTION = 'categories';
 
+/**
+ * Refill all products stock (Admin Utility)
+ * Sets a default stock for all products that don't have it or resets it.
+ */
+export const refillAllProductsStock = async (defaultStock = 50) => {
+    if (!isFirebaseConfigured() || !db) return { success: false, error: 'Firebase not configured' };
+
+    try {
+        const querySnapshot = await getDocs(collection(db, PRODUCTS_COLLECTION));
+        const updates = [];
+
+        querySnapshot.forEach((docSnap) => {
+            const productRef = doc(db, PRODUCTS_COLLECTION, docSnap.id);
+            // Update every product to have stock
+            updates.push(updateDoc(productRef, {
+                stock: defaultStock,
+                lowStockThreshold: 5,
+                updatedAt: serverTimestamp()
+            }));
+        });
+
+        await Promise.all(updates);
+        return { success: true, count: updates.length };
+    } catch (error) {
+        console.error('Error refilling stock:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Update product stock
+ */
+export const updateProductStock = async (productId, newStock) => {
+    if (!isFirebaseConfigured() || !db) return { success: false, error: 'Firebase not configured' };
+
+    try {
+        const productRef = doc(db, PRODUCTS_COLLECTION, productId);
+        await updateDoc(productRef, {
+            stock: parseInt(newStock),
+            updatedAt: serverTimestamp()
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating stock:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Check if product has enough stock
+ */
+export const checkStockAvailability = async (productId, quantity) => {
+    if (!isFirebaseConfigured() || !db) {
+        // Fallback to local data check
+        const product = localData.products.find(p => p.id === productId);
+        if (product) {
+            return {
+                available: (product.stock || 0) >= quantity,
+                currentStock: product.stock || 0
+            };
+        }
+        return { available: true, currentStock: 999 }; // Assume available if no data
+    }
+
+    try {
+        const productDoc = await getDoc(doc(db, PRODUCTS_COLLECTION, productId));
+        if (productDoc.exists()) {
+            const currentStock = productDoc.data().stock || 0;
+            return {
+                available: currentStock >= quantity,
+                currentStock
+            };
+        }
+        return { available: false, error: 'Product not found' };
+    } catch (error) {
+        console.error('Error checking stock:', error);
+        return { available: false, error: error.message };
+    }
+};
+
 
 export const getProducts = async (options = {}) => {
     // ... options destructuring ...
@@ -67,6 +147,9 @@ export const getProducts = async (options = {}) => {
         sortDirection = 'desc',
         limitCount = 50,
         onlyInStock = false,
+        minPrice = null,
+        maxPrice = null,
+        minRating = null,
         sortOf = 'newest' // Default to newest to prevent ReferenceError
     } = options;
 
@@ -88,6 +171,16 @@ export const getProducts = async (options = {}) => {
             products = products.filter(p => p.stock > 0);
         }
 
+        if (minPrice !== null) {
+            products = products.filter(p => (parseFloat(p.price) || 0) >= minPrice);
+        }
+        if (maxPrice !== null) {
+            products = products.filter(p => (parseFloat(p.price) || 0) <= maxPrice);
+        }
+        if (minRating !== null) {
+            products = products.filter(p => (p.rating?.rate || 0) >= minRating);
+        }
+
         return {
             success: true,
             products,
@@ -106,6 +199,18 @@ export const getProducts = async (options = {}) => {
         if (onlyInStock) {
             constraints.push(where('stock', '>', 0));
         }
+
+        // Note: Firestore requires composite indexes for range filters on different fields
+        // For simplicity in this demo, we might filter price/rating client-side if dataset is small
+        // OR we assume indexes exist. Let's do client-side filtering for complex combos to avoid index errors for now
+        // unless it's a simple single-field range.
+
+        // We will apply sort and limit here, but price/rating filtering might happen after fetch if we want to avoid index hell
+        // or we add them if we are sure.
+
+        if (minPrice !== null) constraints.push(where('price', '>=', minPrice));
+        if (maxPrice !== null) constraints.push(where('price', '<=', maxPrice));
+        // if (minRating !== null) constraints.push(where('rating.rate', '>=', minRating)); // Nested field might need special index
 
         constraints.push(orderBy(sortField, sortDirection));
         constraints.push(limit(limitCount));

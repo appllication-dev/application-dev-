@@ -16,7 +16,8 @@ import {
     orderBy,
     limit,
     serverTimestamp,
-    isFirebaseConfigured
+    isFirebaseConfigured,
+    increment // Added
 } from '../../app/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -123,6 +124,21 @@ export const createOrder = async (orderData) => {
             });
 
             console.log('✅ Order saved to Firestore:', orderId);
+
+            // Decrement Stock
+            try {
+                const stockUpdates = items.map(item => {
+                    const productRef = doc(db, 'products', item.id);
+                    return updateDoc(productRef, {
+                        stock: increment(-(item.quantity || 1))
+                    });
+                });
+                await Promise.all(stockUpdates);
+                console.log('📉 Stock updated for items');
+            } catch (stockError) {
+                console.error('Error updating stock:', stockError);
+                // Note: In a real app, we might want to use a transaction to ensure atomicity
+            }
         } catch (error) {
             console.error('Error saving order to Firestore:', error);
             // Continue with local storage as fallback

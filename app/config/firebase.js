@@ -36,7 +36,8 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  enableIndexedDbPersistence
+  enableIndexedDbPersistence,
+  increment // Added
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -45,13 +46,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // ============================================
 // ⚠️ Replace with YOUR Firebase project credentials
 const firebaseConfig = {
-  apiKey: "AIzaSyDO6ISfVvt8-UWt6ik32jy7lVjUfvSccqA",
-  authDomain: "first-app-95051.firebaseapp.com",
-  projectId: "first-app-95051",
-  storageBucket: "first-app-95051.firebasestorage.app",
-  messagingSenderId: "1076765269610",
-  appId: "1:1076765269610:web:cdddc71a72d4dc8a47b413",
-  measurementId: "G-P6RYHNY324"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // ============================================
@@ -579,7 +580,8 @@ export {
   where,
   orderBy,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  increment // Added
 };
 
 export default {
