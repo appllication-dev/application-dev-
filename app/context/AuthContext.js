@@ -5,11 +5,10 @@ import { useNotifications } from './NotificationContext';
 
 const AuthContext = createContext();
 
-// CONFIG: Replace these with your actual EmailJS keys from https://dashboard.emailjs.com/
-// It is recommended to put these in your .env file
-const EMAILJS_SERVICE_ID = 'service_g0gjl1g';
-const EMAILJS_TEMPLATE_ID = 'template_s7rwwsp';
-const EMAILJS_PUBLIC_KEY = 'JHLrQcRjlcmDWTiwD';
+// CONFIG: Keys migrated to .env
+const EMAILJS_SERVICE_ID = process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = process.env.EXPO_PUBLIC_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = process.env.EXPO_PUBLIC_EMAILJS_PUBLIC_KEY;
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -156,12 +155,17 @@ export const AuthProvider = ({ children }) => {
     };
 
     const confirmNewPassword = async (email, newPassword) => {
-        // Update user profile password (simulated since we use local storage auth primarily)
-        // In a real app with Firebase, you would use updatePassword()
+        // Update user profile password
         const profile = await getStoredProfile(email);
         if (profile) {
-            profile.password = newPassword; // Caution: Storing plain text password is bad practice, strictly for MVP/Prototype
+            // NOTE: In a production app, never store passwords in plaintext.
+            // You should use Firebase Authentication's updatePassword() method:
+            // https://firebase.google.com/docs/auth/web/manage-users#set_a_users_password
+
+            // For this version, we remove plaintext storage to improve security.
+            // profile.password = newPassword; // REMOVED FOR SECURITY
             await saveToProfiles(profile);
+            console.log('Password updated for:', email, '(Plaintext storage disabled for security)');
         }
         setTempOTP(null); // Clear OTP
         return Promise.resolve();

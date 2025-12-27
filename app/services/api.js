@@ -4,8 +4,8 @@
 
 const WOO_CONFIG = {
   baseURL: 'https://kataraa.com/wp-json/wc/v3',
-  consumerKey: 'ck_9c64aa5537ea5b2c439fdd8e6928ddc30b4d88f2',
-  consumerSecret: 'cs_709a363c9a045e61f717543c76221f00004bc9bb',
+  consumerKey: process.env.EXPO_PUBLIC_WOO_KEY,
+  consumerSecret: process.env.EXPO_PUBLIC_WOO_SECRET,
 };
 
 // Cache
@@ -74,10 +74,10 @@ const api = {
   },
 
   // Search Products
-  async searchProducts(query) {
+  async searchProducts(query, page = 1, perPage = 20) {
     try {
       const response = await fetch(
-        `${WOO_CONFIG.baseURL}/products?search=${encodeURIComponent(query)}&status=publish`,
+        `${WOO_CONFIG.baseURL}/products?search=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}&status=publish`,
         { headers: { 'Authorization': getAuthHeader() } }
       );
       if (!response.ok) throw new Error('Search failed');

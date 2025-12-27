@@ -42,6 +42,9 @@ export default function SearchScreen() {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
     const [recentSearches, setRecentSearches] = useState([]);
     const [hasSearched, setHasSearched] = useState(false);
 
@@ -82,29 +85,52 @@ export default function SearchScreen() {
     useEffect(() => {
         if (query.length >= 2) {
             const timer = setTimeout(() => {
-                performSearch(query);
+                performSearch(query, 1);
             }, 300);
             return () => clearTimeout(timer);
         } else if (query.length === 0) {
             setResults([]);
             setHasSearched(false);
+            setPage(1);
+            setHasMore(true);
         }
     }, [query]);
 
-    const performSearch = async (searchQuery) => {
-        setLoading(true);
-        setHasSearched(true);
+    const performSearch = async (searchQuery, pageNum = 1) => {
+        if (pageNum === 1) {
+            setLoading(true);
+            setHasSearched(true);
+            setPage(1);
+        } else {
+            setLoadingMore(true);
+        }
+
         try {
-            const data = await api.searchProducts(searchQuery);
-            setResults(data || []);
-            if (searchQuery.length > 0 && data.length > 0) {
+            const data = await api.searchProducts(searchQuery, pageNum);
+            if (pageNum === 1) {
+                setResults(data || []);
+            } else {
+                setResults(prev => [...prev, ...(data || [])]);
+            }
+            setHasMore((data?.length || 0) === 20);
+
+            if (pageNum === 1 && searchQuery.length > 0 && data.length > 0) {
                 saveSearch(searchQuery);
             }
         } catch (error) {
             console.error('Search error:', error);
-            setResults([]);
+            if (pageNum === 1) setResults([]);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const handleLoadMore = () => {
+        if (!loading && !loadingMore && hasMore && results.length > 0) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            performSearch(query, nextPage);
         }
     };
 
@@ -267,6 +293,13 @@ export default function SearchScreen() {
                         numColumns={2}
                         contentContainerStyle={styles.listContent}
                         columnWrapperStyle={styles.row}
+                        onEndReached={handleLoadMore}
+                        onEndReachedThreshold={0.5}
+                        ListFooterComponent={
+                            loadingMore ? (
+                                <ActivityIndicator style={{ marginVertical: 20 }} color={theme.primary} />
+                            ) : null
+                        }
                     />
                 )}
             </View>
