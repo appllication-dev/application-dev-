@@ -1,8 +1,8 @@
 /**
- * 🔥 LEGENDARY HOME SCREEN - Kataraa
- * Cinematic, Dramatic, Epic Design
+ * 🌙 COSMIC LUXURY HOME SCREEN - Kataraa
+ * Next-Generation Beauty App - Ethereal, Floating, Cinematic
  * 
- * الهدف: العميلة تبقى بزااااف وتشوف منتجات بزااااف
+ * الهدف: تجربة فاخرة كونية تحس المستخدمة أنها داخلة لعالم نادر وراقي
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -16,14 +16,23 @@ import {
   RefreshControl,
   TouchableOpacity,
   Dimensions,
-  Animated,
   ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { BlurView } from 'expo-blur';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSpring,
+  Easing,
+  FadeInDown,
+  FadeIn,
+} from 'react-native-reanimated';
 
 // Services & Context
 import api from '../services/api';
@@ -45,52 +54,61 @@ import { COLORS, SPACING, RADIUS, SHADOWS } from '../theme/colors';
 const { width, height } = Dimensions.get('window');
 
 // ============================================
-// 🎬 CINEMATIC HERO SECTION
+// 🌙 COSMIC HERO SECTION
 // ============================================
-const CinematicHero = ({ onShopNow, theme, styles, t }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+const CosmicHero = ({ onShopNow, theme, styles, t, isDark }) => {
+  const fadeAnim = useSharedValue(0);
+  const slideAnim = useSharedValue(40);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    fadeAnim.value = withTiming(1, { duration: 1200 });
+    slideAnim.value = withTiming(0, { duration: 1000, easing: Easing.out(Easing.exp) });
   }, []);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnim.value,
+    transform: [{ translateY: slideAnim.value }],
+  }));
 
   return (
     <View style={styles.heroContainer}>
       <ImageBackground
         source={require('../../assets/images/hero_premium.png')}
-        style={styles.heroVideo}
+        style={styles.heroImage}
         resizeMode="cover"
       >
+        {/* Cosmic Overlay */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.1)', 'rgba(255,249,245,0.4)', 'rgba(255,249,245,0.95)']}
+          colors={[
+            'rgba(212,184,224,0.1)',
+            isDark ? 'rgba(13,10,18,0.7)' : 'rgba(254,251,255,0.6)',
+            isDark ? 'rgba(13,10,18,0.95)' : 'rgba(254,251,255,0.95)',
+          ]}
           style={styles.heroOverlay}
         />
-        <Animated.View
-          style={[
-            styles.heroContent,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-          ]}
-        >
-          <Text style={styles.heroBadge}>✨ {t('heroSubtitle')}</Text>
-          <Text style={[styles.heroTitle, { color: '#3D2314' }]}>{t('heroTitle')}</Text>
+
+        <Animated.View style={[styles.heroContent, contentStyle]}>
+          {/* Ethereal Badge */}
+          <View style={styles.heroBadgeContainer}>
+            <View style={[styles.heroBadge, { backgroundColor: isDark ? 'rgba(26,21,32,0.7)' : 'rgba(255,255,255,0.8)' }]}>
+              <Text style={[styles.heroBadgeText, { color: theme.primary }]}>
+                ✦ {t('heroSubtitle')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Main Title - Elegant Typography */}
+          <Text style={[styles.heroTitle, { color: theme.text }]}>
+            {t('heroTitle')}
+          </Text>
+
+          {/* Glass CTA Button */}
           <TouchableOpacity style={styles.heroButton} onPress={onShopNow}>
             <LinearGradient
-              colors={['#F5B5C8', '#B76E79']}
+              colors={[theme.primary, theme.primaryDark]}
               style={styles.heroButtonGradient}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
               <Text style={styles.heroButtonText}>{t('shopNow')}</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
@@ -103,38 +121,54 @@ const CinematicHero = ({ onShopNow, theme, styles, t }) => {
 };
 
 // ============================================
-// 💎 SKIN TYPE SELECTOR
+// 💎 FLOATING SKIN TYPE SELECTOR
 // ============================================
-const SkinTypeSection = ({ onSelect, theme, styles, t }) => {
+const SkinTypeSection = ({ onSelect, theme, styles, t, isDark }) => {
   const skinTypes = [
-    { id: 'oily', name: t('oily'), icon: 'water', color: '#4FC3F7', emoji: '💧' },
-    { id: 'dry', name: t('dry'), icon: 'leaf', color: '#AED581', emoji: '🍃' },
-    { id: 'mixed', name: t('mixed'), icon: 'contrast', color: '#FFB74D', emoji: '⚖️' },
-    { id: 'sensitive', name: t('sensitive'), icon: 'flower', color: '#F48FB1', emoji: '🌸' },
+    { id: 'oily', name: t('oily'), icon: '💧', color: '#A8D8EA' },
+    { id: 'dry', name: t('dry'), icon: '🍃', color: '#C9E4CA' },
+    { id: 'mixed', name: t('mixed'), icon: '⚖️', color: '#E8DCC8' },
+    { id: 'sensitive', name: t('sensitive'), icon: '🌸', color: '#F0D8E6' },
   ];
 
   return (
     <View style={styles.skinTypeSection}>
       <View style={styles.sectionHeader}>
         <TouchableOpacity style={styles.viewAllBtn}>
-          <Text style={styles.viewAllText}>{t('viewAll')}</Text>
-          <Ionicons name="arrow-back" size={16} color={theme.primary} />
+          <Text style={[styles.viewAllText, { color: theme.primary }]}>{t('viewAll')}</Text>
+          <Ionicons name="arrow-back" size={14} color={theme.primary} />
         </TouchableOpacity>
-        <Text style={styles.sectionTitle}>{t('shopBySkin')} 💎</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          {t('shopBySkin')} ✨
+        </Text>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.skinTypeList}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.skinTypeList}
+      >
         {skinTypes.map((type, index) => (
-          <TouchableOpacity
+          <Animated.View
             key={type.id}
-            style={[styles.skinTypeCard, { backgroundColor: type.color + '20' }]}
-            onPress={() => onSelect(type)}
+            entering={FadeInDown.delay(index * 100).springify()}
           >
-            <View style={[styles.skinTypeIcon, { backgroundColor: type.color }]}>
-              <Text style={styles.skinTypeEmoji}>{type.emoji}</Text>
-            </View>
-            <Text style={styles.skinTypeName}>{type.name}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.skinTypeCard}
+              onPress={() => onSelect(type)}
+            >
+              <BlurView
+                intensity={isDark ? 30 : 50}
+                tint={isDark ? "dark" : "light"}
+                style={styles.skinTypeBlur}
+              >
+                <View style={[styles.skinTypeIcon, { backgroundColor: type.color + '40' }]}>
+                  <Text style={styles.skinTypeEmoji}>{type.icon}</Text>
+                </View>
+                <Text style={[styles.skinTypeName, { color: theme.text }]}>{type.name}</Text>
+              </BlurView>
+            </TouchableOpacity>
+          </Animated.View>
         ))}
       </ScrollView>
     </View>
@@ -142,53 +176,56 @@ const SkinTypeSection = ({ onSelect, theme, styles, t }) => {
 };
 
 // ============================================
-// 🎯 EPIC SECTION HEADER
+// 🎯 ELEGANT SECTION HEADER
 // ============================================
-const EpicSectionHeader = ({ title, subtitle, emoji, onViewAll, color, theme, styles, t }) => (
-  <View style={styles.epicHeader}>
+const ElegantSectionHeader = ({ title, subtitle, onViewAll, theme, styles, t }) => (
+  <View style={styles.elegantHeader}>
     <TouchableOpacity style={styles.viewAllBtn} onPress={onViewAll}>
-      <Text style={styles.viewAllText}>{t('viewAll')}</Text>
-      <Ionicons name="arrow-back" size={16} color={theme.primary} />
+      <Text style={[styles.viewAllText, { color: theme.primary }]}>{t('viewAll')}</Text>
+      <Ionicons name="arrow-back" size={14} color={theme.primary} />
     </TouchableOpacity>
-    <View style={styles.epicTitleContainer}>
-      <Text style={styles.epicEmoji}>{emoji}</Text>
-      <View>
-        <Text style={[styles.epicTitle, color && { color }]}>{title}</Text>
-        {subtitle && <Text style={styles.epicSubtitle}>{subtitle}</Text>}
-      </View>
+    <View style={styles.elegantTitleContainer}>
+      <Text style={[styles.elegantTitle, { color: theme.text }]}>{title}</Text>
+      {subtitle && <Text style={[styles.elegantSubtitle, { color: theme.textMuted }]}>{subtitle}</Text>}
     </View>
   </View>
 );
 
 // ============================================
-// 🔥 FLASH SALE BANNER
+// ✨ COSMIC PROMO BANNER
 // ============================================
-const FlashSaleBanner = ({ onPress, styles, t }) => (
-  <TouchableOpacity style={styles.flashBanner} onPress={onPress}>
-    <LinearGradient
-      colors={['#FF416C', '#FF4B2B']}
-      style={styles.flashGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 0 }}
-    >
-      <View style={styles.flashLeft}>
-        <Text style={styles.flashEmoji}>🔥</Text>
-        <View>
-          <Text style={styles.flashTitle}>{t('flashSale')}</Text>
-          <Text style={styles.flashSubtitle}>{t('flashSaleSubtitle')}</Text>
+const CosmicPromoBanner = ({ onPress, styles, theme, t, isDark }) => (
+  <TouchableOpacity style={styles.promoBanner} onPress={onPress}>
+    <BlurView intensity={isDark ? 40 : 60} tint={isDark ? "dark" : "light"} style={styles.promoBlur}>
+      <LinearGradient
+        colors={[theme.primary + '20', theme.primaryDark + '30']}
+        style={styles.promoGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.promoLeft}>
+          <Text style={styles.promoEmoji}>✨</Text>
+          <View>
+            <Text style={[styles.promoTitle, { color: theme.text }]}>{t('flashSale')}</Text>
+            <Text style={[styles.promoSubtitle, { color: theme.textSecondary }]}>
+              {t('flashSaleSubtitle')}
+            </Text>
+          </View>
         </View>
-      </View>
-      <View style={styles.flashTimer}>
-        <Text style={styles.flashTimerText}>{t('shopNow')} ←</Text>
-      </View>
-    </LinearGradient>
+        <View style={[styles.promoBtn, { backgroundColor: theme.primary + '30' }]}>
+          <Text style={[styles.promoBtnText, { color: theme.primary }]}>
+            {t('shopNow')} ←
+          </Text>
+        </View>
+      </LinearGradient>
+    </BlurView>
   </TouchableOpacity>
 );
 
 // ============================================
 // 🛒 PRODUCT CAROUSEL (Horizontal)
 // ============================================
-const ProductCarousel = ({ products, onProductPress, onAddToCart, onFavorite, isFavorite, styles }) => (
+const ProductCarousel = React.memo(({ products, onProductPress, onAddToCart, onFavorite, isFavorite, styles }) => (
   <FlatList
     data={products}
     horizontal
@@ -198,52 +235,61 @@ const ProductCarousel = ({ products, onProductPress, onAddToCart, onFavorite, is
     renderItem={({ item }) => (
       <ProductCardSwipeable
         item={item}
-        onPress={() => onProductPress(item)}
+        onPress={onProductPress}
         onAddToCart={onAddToCart}
         onFavorite={onFavorite}
         isFavorite={isFavorite(item.id)}
       />
     )}
   />
-);
+));
 
 // ============================================
-// 📦 CATEGORY GRID
+// 📦 FLOATING CATEGORY GRID
 // ============================================
-const CategoryGrid = ({ categories, onSelect, styles, t }) => {
+const CategoryGrid = ({ categories, onSelect, styles, theme, t, isDark }) => {
   const categoryData = [
-    { id: 'acne', name: t('acne'), icon: '🎯', color: '#E57373' },
-    { id: 'makeup', name: t('makeup'), icon: '💄', color: '#F48FB1' },
-    { id: 'hair', name: t('hair'), icon: '💇‍♀️', color: '#CE93D8' },
-    { id: 'body', name: t('body'), icon: '✨', color: '#90CAF9' },
-    { id: 'serum', name: t('serum'), icon: '💎', color: '#80DEEA' },
-    { id: 'suncare', name: t('suncare'), icon: '☀️', color: '#FFE082' },
-    { id: 'aging', name: t('antiAging'), icon: '⏳', color: '#90A4AE' },
-    { id: 'sets', name: t('sets'), icon: '🎁', color: '#FFD54F' },
+    { id: 'acne', name: t('acne'), icon: '🎯', color: '#D4B8E0' },
+    { id: 'makeup', name: t('makeup'), icon: '💄', color: '#F0D8E6' },
+    { id: 'hair', name: t('hair'), icon: '💇‍♀️', color: '#E0D8F0' },
+    { id: 'body', name: t('body'), icon: '✨', color: '#D8E6F0' },
+    { id: 'serum', name: t('serum'), icon: '💎', color: '#E6D8F0' },
+    { id: 'suncare', name: t('suncare'), icon: '☀️', color: '#F0ECD8' },
+    { id: 'aging', name: t('antiAging'), icon: '⏳', color: '#E8E4EC' },
+    { id: 'sets', name: t('sets'), icon: '🎁', color: '#E8DCC8' },
   ];
 
   return (
     <View style={styles.categorySection}>
-      <EpicSectionHeader
+      <ElegantSectionHeader
         title={t('shopByCategory')}
-        emoji="🛍️"
         onViewAll={() => { }}
         styles={styles}
-        theme={{ primary: styles.viewAllText ? styles.viewAllText.color : '#667eea' }}
+        theme={theme}
         t={t}
       />
       <View style={styles.categoryGrid}>
-        {categoryData.map((cat) => (
-          <TouchableOpacity
+        {categoryData.map((cat, index) => (
+          <Animated.View
             key={cat.id}
-            style={styles.categoryCard}
-            onPress={() => onSelect(cat)}
+            entering={FadeInDown.delay(index * 50).springify()}
           >
-            <View style={[styles.categoryIcon, { backgroundColor: cat.color + '30' }]}>
-              <Text style={styles.categoryEmoji}>{cat.icon}</Text>
-            </View>
-            <Text style={styles.categoryName}>{cat.name}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.categoryCard}
+              onPress={() => onSelect(cat)}
+            >
+              <BlurView
+                intensity={isDark ? 25 : 45}
+                tint={isDark ? "dark" : "light"}
+                style={styles.categoryBlur}
+              >
+                <View style={[styles.categoryIcon, { backgroundColor: cat.color + '50' }]}>
+                  <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+                </View>
+                <Text style={[styles.categoryName, { color: theme.text }]}>{cat.name}</Text>
+              </BlurView>
+            </TouchableOpacity>
+          </Animated.View>
         ))}
       </View>
     </View>
@@ -251,9 +297,9 @@ const CategoryGrid = ({ categories, onSelect, styles, t }) => {
 };
 
 // ============================================
-// 🌟 WHY SHOP WITH US
+// 🌟 WHY SHOP WITH US - Glass Cards
 // ============================================
-const WhyShopWithUs = ({ theme, styles, t }) => {
+const WhyShopWithUs = ({ theme, styles, t, isDark }) => {
   const features = [
     { icon: 'shield-checkmark', title: t('guaranteed'), desc: t('guaranteedDesc') },
     { icon: 'cube', title: t('variety'), desc: t('varietyDesc') },
@@ -263,16 +309,22 @@ const WhyShopWithUs = ({ theme, styles, t }) => {
 
   return (
     <View style={styles.whySection}>
-      <Text style={styles.whyTitle}>{t('whyShop')} 💜</Text>
+      <Text style={[styles.whyTitle, { color: theme.text }]}>{t('whyShop')} ✨</Text>
       <View style={styles.whyGrid}>
         {features.map((f, i) => (
-          <View key={i} style={styles.whyCard}>
-            <View style={styles.whyIconContainer}>
-              <Ionicons name={f.icon} size={24} color={theme.primary} />
-            </View>
-            <Text style={styles.whyCardTitle}>{f.title}</Text>
-            <Text style={styles.whyCardDesc}>{f.desc}</Text>
-          </View>
+          <Animated.View
+            key={i}
+            style={styles.whyCardContainer}
+            entering={FadeInDown.delay(i * 100).springify()}
+          >
+            <BlurView intensity={isDark ? 25 : 45} tint={isDark ? "dark" : "light"} style={styles.whyCard}>
+              <View style={[styles.whyIconContainer, { backgroundColor: theme.primary + '20' }]}>
+                <Ionicons name={f.icon} size={22} color={theme.primary} />
+              </View>
+              <Text style={[styles.whyCardTitle, { color: theme.text }]}>{f.title}</Text>
+              <Text style={[styles.whyCardDesc, { color: theme.textMuted }]}>{f.desc}</Text>
+            </BlurView>
+          </Animated.View>
         ))}
       </View>
     </View>
@@ -284,9 +336,6 @@ const WhyShopWithUs = ({ theme, styles, t }) => {
 // ============================================
 import { useTranslation } from '../hooks/useTranslation';
 
-// ============================================
-// 📱 MAIN HOME SCREEN
-// ============================================
 export default function HomeScreen() {
   const router = useRouter();
   const { cartItems } = useCart();
@@ -311,7 +360,7 @@ export default function HomeScreen() {
   const loadData = async () => {
     try {
       const [productsData, categoriesData] = await Promise.all([
-        api.getProducts(1, 50), // More products!
+        api.getProducts(1, 50),
         api.getCategories(),
       ]);
       setProducts(productsData || []);
@@ -323,7 +372,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Check for new arrivals notification
   useEffect(() => {
     if (!loading && products.length > 0) {
       const lastArrivalCheck = notifications.find(n => n.type === 'arrival');
@@ -337,23 +385,23 @@ export default function HomeScreen() {
     }
   }, [loading, products]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  };
+  }, []);
 
-  const handleSearch = (query) => {
+  const handleSearch = React.useCallback((query) => {
     if (query.trim()) {
       router.push(`/products?search=${encodeURIComponent(query)}`);
     }
-  };
+  }, [router]);
 
-  const handleProductPress = (item) => {
+  const handleProductPress = React.useCallback((item) => {
     router.push(`/product/${item.id}`);
-  };
+  }, [router]);
 
-  const handleAddToCart = (item) => {
+  const handleAddToCart = React.useCallback((item) => {
     triggerAddToCart({
       id: item.id,
       name: item.name,
@@ -361,9 +409,9 @@ export default function HomeScreen() {
       image: item.images?.[0]?.src,
       quantity: 1,
     });
-  };
+  }, [triggerAddToCart]);
 
-  const handleFavorite = (item) => {
+  const handleFavorite = React.useCallback((item) => {
     toggleFavorite({
       id: item.id,
       name: item.name,
@@ -371,7 +419,7 @@ export default function HomeScreen() {
       image: item.images?.[0]?.src,
       quantity: 1,
     });
-  };
+  }, [toggleFavorite]);
 
   // Filter functions
   const getSaleProducts = () => products.filter(p => p.on_sale).slice(0, 12);
@@ -382,15 +430,20 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <View style={styles.loadingGlow} />
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={styles.loadingText}>{t('loadingMagic')}</Text>
+        <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t('loadingMagic')}</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? "light" : "dark"} />
+
+      {/* Cosmic Background Orbs */}
+      <View style={[styles.bgOrb1, { backgroundColor: theme.primary + '10' }]} />
+      <View style={[styles.bgOrb2, { backgroundColor: theme.accent + '08' }]} />
 
       {/* Drawer Menu */}
       <DrawerMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -411,21 +464,20 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
         }
       >
-        {/* 🎬 Cinematic Hero */}
-        <CinematicHero onShopNow={() => router.push('/products')} theme={theme} styles={styles} t={t} />
+        {/* 🌙 Cosmic Hero */}
+        <CosmicHero onShopNow={() => router.push('/products')} theme={theme} styles={styles} t={t} isDark={isDark} />
 
         {/* 💎 Shop by Skin Type */}
-        <SkinTypeSection onSelect={(type) => router.push(`/products?skin=${type.id}`)} theme={theme} styles={styles} t={t} />
+        <SkinTypeSection onSelect={(type) => router.push(`/products?skin=${type.id}`)} theme={theme} styles={styles} t={t} isDark={isDark} />
 
-        {/* 🔥 Flash Sale Banner */}
-        <FlashSaleBanner onPress={() => router.push('/products?sale=true')} styles={styles} t={t} />
+        {/* ✨ Promo Banner */}
+        <CosmicPromoBanner onPress={() => router.push('/products?sale=true')} styles={styles} theme={theme} t={t} isDark={isDark} />
 
         {/* 🆕 New Arrivals */}
         <View style={styles.section}>
-          <EpicSectionHeader
+          <ElegantSectionHeader
             title={t('newArrivals')}
             subtitle={t('newArrivalsSub')}
-            emoji="🆕"
             onViewAll={() => router.push('/products')}
             theme={theme}
             styles={styles}
@@ -443,11 +495,9 @@ export default function HomeScreen() {
 
         {/* 🔥 On Sale */}
         <View style={styles.section}>
-          <EpicSectionHeader
+          <ElegantSectionHeader
             title={t('onSale')}
             subtitle={t('onSaleSub')}
-            emoji="🔥"
-            color="#FF416C"
             onViewAll={() => router.push('/products?sale=true')}
             theme={theme}
             styles={styles}
@@ -468,16 +518,16 @@ export default function HomeScreen() {
           categories={categories}
           onSelect={(cat) => router.push(`/products?category=${cat.id}`)}
           styles={styles}
+          theme={theme}
           t={t}
+          isDark={isDark}
         />
 
         {/* ⭐ Popular Products */}
         <View style={styles.section}>
-          <EpicSectionHeader
+          <ElegantSectionHeader
             title={t('bestSellers')}
             subtitle={t('bestSellersSub')}
-            emoji="⭐"
-            color="#FFB300"
             onViewAll={() => router.push('/products')}
             theme={theme}
             styles={styles}
@@ -494,14 +544,13 @@ export default function HomeScreen() {
         </View>
 
         {/* 🌟 Why Shop With Us */}
-        <WhyShopWithUs theme={theme} styles={styles} t={t} />
+        <WhyShopWithUs theme={theme} styles={styles} t={t} isDark={isDark} />
 
         {/* 💜 More Products */}
         <View style={styles.section}>
-          <EpicSectionHeader
+          <ElegantSectionHeader
             title={t('discoverMore')}
             subtitle={t('discoverMoreSub')}
-            emoji="💜"
             onViewAll={() => router.push('/products')}
             theme={theme}
             styles={styles}
@@ -517,19 +566,26 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Newsletter CTA */}
+        {/* Newsletter CTA - Glass Style */}
         <View style={styles.newsletterSection}>
-          <LinearGradient
-            colors={[theme.primary, theme.primaryDark]}
-            style={styles.newsletterGradient}
-          >
-            <Text style={styles.newsletterEmoji}>💌</Text>
-            <Text style={styles.newsletterTitle}>{t('joinFamily')}</Text>
-            <Text style={styles.newsletterSubtitle}>{t('joinFamilySub')}</Text>
-            <TouchableOpacity style={styles.newsletterBtn}>
-              <Text style={styles.newsletterBtnText}>{t('subscribe')}</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+          <BlurView intensity={isDark ? 40 : 60} tint={isDark ? "dark" : "light"} style={styles.newsletterBlur}>
+            <LinearGradient
+              colors={[theme.primary + '20', theme.primaryDark + '30']}
+              style={styles.newsletterGradient}
+            >
+              <Text style={styles.newsletterEmoji}>💌</Text>
+              <Text style={[styles.newsletterTitle, { color: theme.text }]}>{t('joinFamily')}</Text>
+              <Text style={[styles.newsletterSubtitle, { color: theme.textSecondary }]}>{t('joinFamilySub')}</Text>
+              <TouchableOpacity style={styles.newsletterBtn}>
+                <LinearGradient
+                  colors={[theme.primary, theme.primaryDark]}
+                  style={styles.newsletterBtnGradient}
+                >
+                  <Text style={styles.newsletterBtnText}>{t('subscribe')}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </LinearGradient>
+          </BlurView>
         </View>
 
         {/* Footer Space */}
@@ -540,73 +596,30 @@ export default function HomeScreen() {
 }
 
 // ============================================
-// 🎨 STYLES
+// 🎨 COSMIC LUXURY STYLES
 // ============================================
-
-// Static styles for invariant elements (like hero text over video/images)
-const staticStyles = StyleSheet.create({
-  heroContainer: {
-    height: height * 0.45,
-    position: 'relative',
-  },
-  heroVideo: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroContent: {
-    position: 'absolute',
-    bottom: 40,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-  },
-  heroBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    color: '#fff',
-    fontSize: 12,
-    marginBottom: 12,
-  },
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#fff',
-    textAlign: 'center',
-    lineHeight: 40,
-  },
-  heroSubtitle: {
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 8,
-  },
-  heroButton: {
-    marginTop: 20,
-    borderRadius: 30,
-    overflow: 'hidden',
-  },
-  heroButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    gap: 8,
-  },
-  heroButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
-
 const getStyles = (theme, isDark) => StyleSheet.create({
-  ...staticStyles, // Merge static styles
   container: {
     flex: 1,
     backgroundColor: theme.background,
+  },
+  bgOrb1: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    zIndex: -1,
+  },
+  bgOrb2: {
+    position: 'absolute',
+    bottom: 200,
+    left: -100,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    zIndex: -1,
   },
   loadingContainer: {
     flex: 1,
@@ -614,44 +627,128 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.background,
   },
+  loadingGlow: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: theme.primary + '20',
+  },
   loadingText: {
-    marginTop: 16,
-    color: theme.primary,
+    marginTop: 20,
     fontSize: 16,
+    letterSpacing: 1,
   },
 
-  // Skin Type
-  skinTypeSection: {
-    marginTop: 24,
+  // Hero
+  heroContainer: {
+    height: height * 0.48,
+    position: 'relative',
+  },
+  heroImage: {
+    flex: 1,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  glowOrb: {
+    position: 'absolute',
+    top: 60,
+    right: 40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.primary,
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 50,
+    left: 24,
+    right: 24,
+    alignItems: 'center',
+  },
+  heroBadgeContainer: {
+    borderRadius: 20,
+    overflow: 'hidden',
     marginBottom: 16,
   },
+  heroBadge: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  heroBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  heroTitle: {
+    fontSize: 34,
+    fontWeight: '300',
+    textAlign: 'center',
+    lineHeight: 44,
+    letterSpacing: -0.5,
+    marginBottom: 24,
+  },
+  heroButton: {
+    borderRadius: 28,
+    overflow: 'hidden',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  heroButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 36,
+    paddingVertical: 16,
+    gap: 10,
+  },
+  heroButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+
+  // Skin Type Section
+  skinTypeSection: {
+    marginTop: 28,
+    marginBottom: 20,
+  },
   skinTypeList: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     gap: 12,
   },
   skinTypeCard: {
-    width: 100,
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
+    borderRadius: 24,
+    overflow: 'hidden',
     marginRight: 12,
   },
+  skinTypeBlur: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(184,159,204,0.15)' : 'rgba(212,184,224,0.3)',
+    borderRadius: 24,
+  },
   skinTypeIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   skinTypeEmoji: {
-    fontSize: 24,
+    fontSize: 26,
   },
   skinTypeName: {
-    fontSize: 11,
-    color: theme.text,
-    textAlign: 'center',
+    fontSize: 12,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
 
   // Section Header
@@ -659,13 +756,13 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
+    fontSize: 20,
+    fontWeight: '300',
+    letterSpacing: 0.5,
   },
   viewAllBtn: {
     flexDirection: 'row',
@@ -674,206 +771,225 @@ const getStyles = (theme, isDark) => StyleSheet.create({
   },
   viewAllText: {
     fontSize: 13,
-    color: theme.primary,
+    fontWeight: '500',
   },
 
-  // Epic Header
-  epicHeader: {
+  // Elegant Header
+  elegantHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  epicTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  elegantTitleContainer: {
+    alignItems: 'flex-end',
   },
-  epicEmoji: {
-    fontSize: 24,
+  elegantTitle: {
+    fontSize: 22,
+    fontWeight: '300',
+    letterSpacing: 0.5,
   },
-  epicTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text, // Default color, can be overridden
-  },
-  epicSubtitle: {
+  elegantSubtitle: {
     fontSize: 12,
-    color: theme.textMuted,
+    marginTop: 2,
+    letterSpacing: 0.3,
   },
 
-  // Flash Sale
-  flashBanner: {
-    marginHorizontal: 16,
-    marginVertical: 16,
-    borderRadius: 16,
+  // Promo Banner
+  promoBanner: {
+    marginHorizontal: 20,
+    marginVertical: 20,
+    borderRadius: 24,
     overflow: 'hidden',
   },
-  flashGradient: {
+  promoBlur: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(184,159,204,0.15)' : 'rgba(212,184,224,0.3)',
+  },
+  promoGradient: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
   },
-  flashLeft: {
+  promoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
-  flashEmoji: {
+  promoEmoji: {
     fontSize: 32,
   },
-  flashTitle: {
-    color: '#fff',
+  promoTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
-  flashSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
+  promoSubtitle: {
     fontSize: 12,
+    marginTop: 2,
   },
-  flashTimer: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+  promoBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
   },
-  flashTimerText: {
-    color: '#fff',
+  promoBtnText: {
     fontSize: 12,
     fontWeight: '600',
   },
 
   // Section
   section: {
-    marginVertical: 8,
+    marginVertical: 12,
   },
   carouselContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
 
   // Category Grid
   categorySection: {
-    marginVertical: 16,
+    marginVertical: 20,
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     justifyContent: 'space-between',
   },
   categoryCard: {
-    width: (width - 48) / 3,
+    width: (width - 48) / 4,
+    marginBottom: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  categoryBlur: {
     alignItems: 'center',
-    padding: 12,
-    marginBottom: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(184,159,204,0.1)' : 'rgba(212,184,224,0.2)',
+    borderRadius: 20,
   },
   categoryIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   categoryEmoji: {
-    fontSize: 28,
+    fontSize: 22,
   },
   categoryName: {
-    fontSize: 12,
-    color: theme.text,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
 
-  // Why Shop
+  // Why Shop Section
   whySection: {
-    backgroundColor: theme.backgroundCard,
-    marginHorizontal: 16,
-    marginVertical: 16,
-    padding: 20,
-    borderRadius: 20,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0.3 : 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginHorizontal: 20,
+    marginVertical: 24,
   },
   whyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
+    fontSize: 22,
+    fontWeight: '300',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    letterSpacing: 0.5,
   },
   whyGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  whyCard: {
+  whyCardContainer: {
     width: '48%',
+    marginBottom: 16,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  whyCard: {
     alignItems: 'center',
-    padding: 12,
-    marginBottom: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(184,159,204,0.1)' : 'rgba(212,184,224,0.2)',
+    borderRadius: 24,
   },
   whyIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: theme.primary + '15',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   whyCardTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: theme.text,
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 4,
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
   whyCardDesc: {
     fontSize: 11,
-    color: theme.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 
   // Newsletter
   newsletterSection: {
-    marginHorizontal: 16,
-    marginVertical: 24,
-    borderRadius: 20,
+    marginHorizontal: 20,
+    marginVertical: 28,
+    borderRadius: 28,
     overflow: 'hidden',
   },
+  newsletterBlur: {
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(184,159,204,0.15)' : 'rgba(212,184,224,0.3)',
+    borderRadius: 28,
+  },
   newsletterGradient: {
-    padding: 32,
+    padding: 36,
     alignItems: 'center',
   },
   newsletterEmoji: {
     fontSize: 48,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   newsletterTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 24,
+    fontWeight: '300',
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   newsletterSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
+    lineHeight: 20,
   },
   newsletterBtn: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 25,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  newsletterBtnGradient: {
+    paddingHorizontal: 36,
+    paddingVertical: 14,
   },
   newsletterBtnText: {
-    color: theme.primary,
-    fontWeight: 'bold',
-    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+    letterSpacing: 0.5,
   },
 });

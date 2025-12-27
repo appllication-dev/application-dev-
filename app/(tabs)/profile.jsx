@@ -1,5 +1,9 @@
+/**
+ * Profile Screen - Cosmic Luxury Edition
+ * 🌙 Orbital rings, floating glass cards, ethereal animations
+ */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,7 +17,6 @@ import {
   Modal,
   StyleSheet,
   ActivityIndicator,
-  Platform,
   I18nManager
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,6 +42,7 @@ import PaymentMethods from "../components/PaymentMethods";
 import { useTranslation } from "../hooks/useTranslation";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import EditProfileModal from "../components/EditProfileModal";
 
 const { width } = Dimensions.get("window");
 
@@ -67,42 +71,10 @@ const Profile = () => {
 
   const { t } = useTranslation();
 
-  const [imageUri, setImageUri] = useState(null);
   const [loadingImage, setLoadingImage] = useState(false);
-
-  // Modal States
   const [showAddresses, setShowAddresses] = useState(false);
   const [showPayments, setShowPayments] = useState(false);
-
-  // Animation Values
-  const ring1Rotation = useSharedValue(0);
-  const ring2Rotation = useSharedValue(0);
-  const ring3Rotation = useSharedValue(0);
-
-  useEffect(() => {
-    ring1Rotation.value = withRepeat(
-      withTiming(360, { duration: 8000, easing: Easing.linear }),
-      -1
-    );
-    ring2Rotation.value = withRepeat(
-      withTiming(-360, { duration: 12000, easing: Easing.linear }),
-      -1
-    );
-    ring3Rotation.value = withRepeat(
-      withTiming(360, { duration: 15000, easing: Easing.linear }),
-      -1
-    );
-  }, []);
-
-  const animatedStyle1 = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${ring1Rotation.value}deg` }]
-  }));
-  const animatedStyle2 = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${ring2Rotation.value}deg` }]
-  }));
-  const animatedStyle3 = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${ring3Rotation.value}deg` }]
-  }));
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   // Handlers
   const handleAddAddress = async (newAddress) => await saveAddress(newAddress);
@@ -110,23 +82,10 @@ const Profile = () => {
   const handleAddCard = async (newCard) => await savePaymentMethod(newCard);
   const handleDeleteCard = async (id) => await deletePaymentMethod(id);
 
-  // Load Image
+  // Load Image logic removed, using user.photoURL directly
   useEffect(() => {
-    const loadSavedImage = async () => {
-      if (!user) {
-        setImageUri(null);
-        return;
-      }
-      try {
-        const userImageKey = `profile_image_${user.id}`;
-        const savedUri = await storage.getItem(userImageKey);
-        if (savedUri) setImageUri(savedUri);
-      } catch (error) {
-        console.error("Error loading saved image:", error);
-      }
-    };
-    loadSavedImage();
-  }, [user]);
+    // Sync logic if needed
+  }, [user?.photoURL]);
 
   const userStats = {
     totalOrders: orders.length,
@@ -155,13 +114,15 @@ const Profile = () => {
 
       if (!result.canceled) {
         setLoadingImage(true);
-        const localUri = result.assets[0].uri;
-        const userImageKey = `profile_image_${user.id}`;
-        await storage.setItem(userImageKey, localUri);
-        setImageUri(localUri);
-
-        updateUser({ photoURL: localUri });
-        setLoadingImage(false);
+        try {
+          const uri = result.assets[0].uri;
+          await updateUser({ photoURL: uri });
+        } catch (error) {
+          console.error("Error updating image:", error);
+          Alert.alert(t('error'), t('updateFailed'));
+        } finally {
+          setLoadingImage(false);
+        }
       }
     } catch (error) {
       setLoadingImage(false);
@@ -191,72 +152,79 @@ const Profile = () => {
     );
   };
 
-  // --- Render Components ---
+  const styles = getStyles(theme, isDark);
 
+  // Components
   const QuickActionItem = ({ item, index }) => (
     <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
       <TouchableOpacity
-        style={[styles.quickActionCard, { backgroundColor: theme.backgroundCard, shadowColor: theme.shadow }]}
+        style={styles.quickActionCard}
         onPress={item.onPress}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <View style={[styles.iconCircle, { backgroundColor: theme.primary + '15' }]}>
-          <Ionicons name={item.icon} size={24} color={theme.primary} />
-        </View>
-        {item.count !== undefined && item.count > 0 && (
-          <View style={[styles.badge, { backgroundColor: theme.accent }]}>
-            <Text style={styles.badgeText}>{item.count}</Text>
+        <View style={[styles.quickActionBlur, { backgroundColor: isDark ? 'rgba(26,21,32,0.7)' : 'rgba(255,255,255,0.8)' }]}>
+          <View style={styles.iconCircle}>
+            <Ionicons name={item.icon} size={22} color={theme.primary} />
           </View>
-        )}
-        <Text style={[styles.quickActionText, { color: theme.textSecondary }]}>{item.label}</Text>
+          {item.count !== undefined && item.count > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.count}</Text>
+            </View>
+          )}
+          <Text style={styles.quickActionText}>{item.label}</Text>
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
 
-  const StatItem = ({ label, value, icon, index }) => (
+  const StatItem = ({ label, value, icon, index, onPress }) => (
     <Animated.View
       entering={FadeInDown.delay(400 + (index * 100)).springify()}
       style={styles.statContainer}
     >
-      <BlurView intensity={isDark ? 20 : 40} tint={isDark ? "dark" : "light"} style={styles.statCard}>
-        <View style={[styles.statIconBg, { backgroundColor: theme.primary + '20' }]}>
-          <Ionicons name={icon} size={20} color={theme.primary} />
+      <TouchableOpacity
+        style={[styles.statCard, { backgroundColor: isDark ? 'rgba(26,21,32,0.7)' : 'rgba(255,255,255,0.8)' }]}
+        onPress={onPress}
+        activeOpacity={0.8}
+      >
+        <View style={styles.statIconBg}>
+          <Ionicons name={icon} size={18} color={theme.primary} />
         </View>
         <View style={styles.statContent}>
-          <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</Text>
+          <Text style={styles.statValue}>{value}</Text>
+          <Text style={styles.statLabel}>{label}</Text>
         </View>
-      </BlurView>
+      </TouchableOpacity>
     </Animated.View>
   );
 
   const SettingItem = ({ item, index }) => (
     <Animated.View entering={FadeInDown.delay(600 + (index * 50)).springify()}>
       <TouchableOpacity
-        style={[styles.settingRow, { borderBottomColor: theme.border, backgroundColor: theme.backgroundCard }]}
+        style={styles.settingRow}
         onPress={item.type === "toggle" ? item.onToggle : item.onPress}
         disabled={item.type === "toggle"}
       >
         <View style={styles.settingContent}>
           <View style={styles.settingLeft}>
-            <View style={[styles.settingIconBox, { backgroundColor: theme.backgroundSecondary }]}>
-              <Ionicons name={item.iconName} size={20} color={theme.text} />
+            <View style={styles.settingIconBox}>
+              <Ionicons name={item.iconName} size={18} color={theme.text} />
             </View>
-            <Text style={[styles.settingLabel, { color: theme.text }]}>{item.label}</Text>
+            <Text style={styles.settingLabel}>{item.label}</Text>
           </View>
 
           <View style={styles.settingRight}>
             {item.type === "toggle" ? (
               <Switch
-                trackColor={{ false: theme.border, true: theme.primaryLight }}
+                trackColor={{ false: theme.border, true: theme.primary + '50' }}
                 thumbColor={item.value ? theme.primary : "#f4f3f4"}
                 onValueChange={item.onToggle}
                 value={item.value}
               />
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {item.rightText && <Text style={[styles.settingRightText, { color: theme.textMuted }]}>{item.rightText}</Text>}
-                <Ionicons name={I18nManager.isRTL ? "chevron-back" : "chevron-forward"} size={18} color={theme.textMuted} />
+                {item.rightText && <Text style={styles.settingRightText}>{item.rightText}</Text>}
+                <Ionicons name={I18nManager.isRTL ? "chevron-back" : "chevron-forward"} size={16} color={theme.textMuted} />
               </View>
             )}
           </View>
@@ -265,12 +233,12 @@ const Profile = () => {
     </Animated.View>
   );
 
-  // Setup Data
+  // Data
   const quickActions = [
     { id: 1, icon: 'receipt-outline', label: t('orders'), count: userStats.totalOrders, onPress: () => router.push('/orders') },
     { id: 2, icon: 'heart-outline', label: t('favorites'), count: favorites.length, onPress: () => router.push('/favorites') },
     { id: 3, icon: 'location-outline', label: t('addresses'), count: savedAddresses.length, onPress: () => setShowAddresses(true) },
-    { id: 4, icon: 'create-outline', label: t('editProfile'), onPress: () => Alert.alert("Coming Soon") },
+    { id: 4, icon: 'create-outline', label: t('editProfile'), onPress: () => setShowEditProfile(true) },
     { id: 5, icon: 'card-outline', label: t('paymentMethods'), count: savedPaymentMethods.length, onPress: () => setShowPayments(true) },
   ];
 
@@ -288,88 +256,102 @@ const Profile = () => {
   // Guest View
   if (!user) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={[styles.guestContent, { backgroundColor: theme.backgroundCard, shadowColor: theme.shadow }]}>
-          <View style={[styles.logoCircle, { backgroundColor: theme.primary + '15' }]}>
-            <Ionicons name="person" size={50} color={theme.primary} />
-          </View>
-          <Text style={[styles.guestTitle, { color: theme.text }]}>{t('welcome')}</Text>
-          <Text style={[styles.guestSubtitle, { color: theme.textSecondary }]}>{t('dontHaveAccount')}</Text>
+      <View style={styles.container}>
+        <View style={styles.bgOrb1} />
+        <View style={styles.bgOrb2} />
+        <View style={styles.guestContent}>
+          <BlurView intensity={isDark ? 30 : 50} tint={isDark ? "dark" : "light"} style={styles.guestBlur}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="person" size={44} color={theme.primary} />
+            </View>
+            <Text style={styles.guestTitle}>{t('welcome')}</Text>
+            <Text style={styles.guestSubtitle}>{t('dontHaveAccount')}</Text>
 
-          <TouchableOpacity onPress={() => router.push('/auth')} style={styles.guestBtn}>
-            <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.guestBtnGradient}>
-              <Text style={styles.guestBtnText}>{t('login')}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/auth')} style={styles.guestBtn}>
+              <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.guestBtnGradient}>
+                <Text style={styles.guestBtnText}>{t('login')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/auth')} style={[styles.guestBtnOutline, { borderColor: theme.primary }]}>
-            <Text style={[styles.guestBtnText, { color: theme.primary }]}>{t('createAccount')}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/auth')} style={styles.guestBtnOutline}>
+              <Text style={[styles.guestBtnOutlineText, { color: theme.primary }]}>{t('createAccount')}</Text>
+            </TouchableOpacity>
+          </BlurView>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#0F0F1A' : '#FAFAFF' }]}>
-      {/* Background Glows */}
-      <View style={[styles.bgGlow, { top: -100, right: -100, backgroundColor: theme.primary + '15' }]} />
-      <View style={[styles.bgGlow, { bottom: -50, left: -50, backgroundColor: theme.accent + '10' }]} />
+    <View style={styles.container}>
+      {/* Cosmic Background Orbs */}
+      {/* Cosmic Background Orbs */}
+      <View style={styles.bgOrb1} />
+      <View style={styles.bgOrb2} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Section */}
-        <View style={styles.header}>
-          <LinearGradient
-            colors={[theme.primary, theme.primaryDark]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          <View style={styles.headerGlass} />
+        {/* Header Section with Orbital Avatar */}
 
+        {/* Header Section - Minimized & Clean */}
+        <View style={styles.header}>
           <Animated.View entering={FadeInDown.delay(200)} style={styles.profileCore}>
-            {/* Multi-layered Neural Rings */}
-            <Animated.View style={[styles.ring, styles.ring1, animatedStyle1]} />
-            <Animated.View style={[styles.ring, styles.ring2, animatedStyle2]} />
-            <Animated.View style={[styles.ring, styles.ring3, animatedStyle3]} />
+            {/* Soft Glow behind avatar */}
+            <View style={styles.avatarGlow} />
 
             {/* Profile Image */}
             <TouchableOpacity onPress={pickAndCropImage} activeOpacity={0.9} style={styles.avatarContainer}>
-              <Image
-                source={imageUri ? { uri: imageUri } : (user?.photoURL ? { uri: user.photoURL } : { uri: "https://via.placeholder.com/150" })}
-                style={styles.avatar}
-              />
+              <View style={[styles.avatarBorder, { borderColor: theme.primary + "40" }]}>
+                {user?.photoURL ? (
+                  <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + '10' }]}>
+                    <Ionicons name="person" size={44} color={theme.primary} />
+                  </View>
+                )}
+              </View>
               {loadingImage && (
-                <View style={styles.loaderOverlay}>
-                  <ActivityIndicator color={theme.primary} />
+                <View style={[styles.loaderOverlay, { backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 60 }]}>
+                  <ActivityIndicator color={theme.primary} size="large" />
                 </View>
               )}
-              <BlurView intensity={60} tint="light" style={styles.editBadge}>
-                <Ionicons name="camera" size={14} color={theme.primary} />
-              </BlurView>
+              <View style={[styles.editBadge, { backgroundColor: theme.primary }]}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+              </View>
             </TouchableOpacity>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(300)} style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.displayName || t('welcomeMember')}</Text>
-            <View style={styles.emailBadge}>
-              <Text style={styles.userEmail}>{user?.email}</Text>
+            <Text style={[styles.userName, { color: theme.text }]}>{user?.displayName || t('welcomeMember')}</Text>
+            <View style={[styles.emailBadge, { backgroundColor: theme.primary + '15' }]}>
+              <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{user?.email}</Text>
             </View>
           </Animated.View>
 
           {/* Stats Row */}
           <View style={styles.statsRow}>
-            <StatItem label={t('ordersTitle')} value={userStats.totalOrders} icon="receipt" index={0} />
-            <StatItem label={t('favorites')} value={userStats.favorites} icon="heart" index={1} />
+            <StatItem
+              label={t('ordersTitle')}
+              value={userStats.totalOrders}
+              icon="receipt"
+              index={0}
+              onPress={() => router.push('/orders')}
+            />
+            <StatItem
+              label={t('favorites')}
+              value={userStats.favorites}
+              icon="heart"
+              index={1}
+              onPress={() => router.push('/favorites')}
+            />
           </View>
         </View>
 
-        {/* Quick Actions Carousel */}
+        {/* Quick Actions */}
         <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>{t('quickActions')}</Text>
+          <Text style={styles.sectionHeader}>{t('quickActions')}</Text>
           <FlatList
             data={quickActions}
             horizontal
@@ -380,16 +362,16 @@ const Profile = () => {
           />
         </View>
 
-        {/* Settings List */}
-        <View style={[styles.settingsContainer, { backgroundColor: theme.backgroundCard, shadowColor: theme.shadow }]}>
+        {/* Settings */}
+        <View style={styles.settingsContainer}>
           {settingsOptions.map((item, index) => (
             <SettingItem key={item.id} item={item} index={index} />
           ))}
         </View>
 
-        {/* Info & Legal Section */}
-        <View style={[styles.settingsContainer, { backgroundColor: theme.backgroundCard, shadowColor: theme.shadow }]}>
-          <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>{t('moreInfo')}</Text>
+        {/* Info Section */}
+        <View style={styles.settingsContainer}>
+          <Text style={styles.sectionHeaderSmall}>{t('moreInfo')}</Text>
           {infoOptions.map((item, index) => (
             <SettingItem key={item.id} item={item} index={index} />
           ))}
@@ -397,18 +379,17 @@ const Profile = () => {
 
         {/* Logout */}
         <Animated.View entering={FadeInDown.delay(800)} style={styles.logoutContainer}>
-          <TouchableOpacity style={[styles.logoutBtn, { borderColor: theme.error + '50' }]} onPress={handleLogout}>
-            <Text style={[styles.logoutText, { color: theme.error }]}>{t('logout')}</Text>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutText}>{t('logout')}</Text>
           </TouchableOpacity>
         </Animated.View>
-
       </ScrollView>
 
       {/* Modals */}
       <Modal visible={showAddresses} animationType="slide" transparent={true} onRequestClose={() => setShowAddresses(false)}>
         <View style={styles.modalOverlay}>
           <BlurView intensity={30} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundCard }]}>
+          <View style={styles.modalContent}>
             <SavedAddresses onClose={() => setShowAddresses(false)} addresses={savedAddresses} onAdd={handleAddAddress} onDelete={handleDeleteAddress} />
           </View>
         </View>
@@ -417,157 +398,213 @@ const Profile = () => {
       <Modal visible={showPayments} animationType="slide" transparent={true} onRequestClose={() => setShowPayments(false)}>
         <View style={styles.modalOverlay}>
           <BlurView intensity={30} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundCard }]}>
+          <View style={styles.modalContent}>
             <PaymentMethods onClose={() => setShowPayments(false)} cards={savedPaymentMethods} onAdd={handleAddCard} onDelete={handleDeleteCard} />
           </View>
         </View>
       </Modal>
 
-
+      <EditProfileModal visible={showEditProfile} onClose={() => setShowEditProfile(false)} />
     </View>
   );
 };
 
-
-// Need to import I18nManager for RTL check in component
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  bgGlow: { position: 'absolute', width: 300, height: 300, borderRadius: 150, zIndex: -1 },
+const getStyles = (theme, isDark) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
+  bgOrb1: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: theme.primary,
+    zIndex: -1
+  },
+  bgOrb2: {
+    position: 'absolute',
+    bottom: 50,
+    left: -80,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: theme.accent + '10',
+    zIndex: -1
+  },
   scrollContent: { paddingBottom: 100 },
 
   // Header
   header: {
     alignItems: 'center',
     paddingTop: 60,
-    paddingBottom: 40,
-    borderBottomLeftRadius: 50,
-    borderBottomRightRadius: 50,
-    overflow: 'hidden',
-    marginBottom: 20,
-    elevation: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-  },
-  headerGlass: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingBottom: 20,
+    marginBottom: 10,
   },
   profileCore: {
-    width: 160,
-    height: 160,
+    width: 120,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  ring: {
+  avatarGlow: {
     position: 'absolute',
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.primary,
+    opacity: 0.15,
+    transform: [{ scale: 1.2 }],
   },
-  ring1: { width: 150, height: 150, borderStyle: 'dashed' },
-  ring2: { width: 135, height: 135, borderColor: 'rgba(255,255,255,0.15)' },
-  ring3: { width: 120, height: 120, borderStyle: 'dotted' },
-
   avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     padding: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: theme.backgroundCard,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  avatar: { width: '100%', height: '100%', borderRadius: 50 },
-  loaderOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 50, justifyContent: 'center', alignItems: 'center' },
-  editBadge: { position: 'absolute', bottom: -5, right: -5, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+
+
+  avatar: { width: '100%', height: '100%', borderRadius: 45 },
+  avatarPlaceholder: { width: '100%', height: '100%', borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
+  loaderOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.background,
+  },
 
   // User Info
-  userInfo: { alignItems: 'center', marginBottom: 25 },
-  userName: { fontSize: 26, fontWeight: '900', color: '#fff', marginBottom: 6, letterSpacing: -0.5 },
-  emailBadge: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
-  userEmail: { fontSize: 13, color: '#fff' },
+  userInfo: { alignItems: 'center', marginBottom: 32 },
+  userName: { fontSize: 28, fontWeight: '300', marginBottom: 8, letterSpacing: 0.5 },
+  emailBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
+  userEmail: { fontSize: 13 },
 
   // Stats
-  statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 15, width: '100%', paddingHorizontal: 25 },
-  statContainer: { flex: 1, height: 80, borderRadius: 24, overflow: 'hidden' },
-  statCard: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, gap: 12 },
+  statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, width: '100%', paddingHorizontal: 28 },
+  statContainer: { flex: 1, height: 76, borderRadius: 22, overflow: 'hidden' },
+  statCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 12,
+    borderWidth: 1,
+    backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : 'rgba(255,255,255,0.6)',
+    borderColor: isDark ? 'rgba(184,159,204,0.1)' : 'rgba(212,184,224,0.2)',
+    borderRadius: 22,
+  },
   statContent: { flex: 1 },
-  statValue: { fontSize: 20, fontWeight: '900' },
-  statLabel: { fontSize: 11, fontWeight: '600', opacity: 0.7 },
-  statIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  statValue: { fontSize: 20, fontWeight: '700', color: theme.text },
+  statLabel: { fontSize: 11, fontWeight: '500', color: theme.textSecondary },
+  statIconBg: { width: 36, height: 36, borderRadius: 12, backgroundColor: theme.primary + '15', justifyContent: 'center', alignItems: 'center' },
 
   // Sections
-  sectionContainer: { marginTop: 10 },
-  sectionHeader: { fontSize: 12, fontWeight: '800', marginLeft: 30, marginBottom: 15, letterSpacing: 2, textTransform: 'uppercase' },
-  quickList: { paddingHorizontal: 20, gap: 15 },
+  sectionContainer: { marginTop: 8 },
+  sectionHeader: { fontSize: 11, fontWeight: '700', marginLeft: 28, marginBottom: 16, letterSpacing: 2, textTransform: 'uppercase', color: theme.textMuted },
+  sectionHeaderSmall: { fontSize: 11, fontWeight: '700', marginLeft: 20, marginBottom: 12, letterSpacing: 2, textTransform: 'uppercase', color: theme.textMuted },
+  quickList: { paddingHorizontal: 20, gap: 14 },
 
   // Quick Actions
   quickActionCard: {
-    width: 110,
-    height: 120,
-    borderRadius: 28,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginRight: 10,
+  },
+  quickActionBlur: {
+    width: 105,
+    height: 115,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-    marginRight: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : 'rgba(255,255,255,0.6)',
+    borderColor: isDark ? 'rgba(184,159,204,0.15)' : 'rgba(212,184,224,0.25)',
+    borderRadius: 24,
   },
-  iconCircle: { width: 48, height: 48, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  quickActionText: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  badge: { position: 'absolute', top: 12, right: 12, minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  badgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  iconCircle: { width: 44, height: 44, borderRadius: 16, backgroundColor: theme.primary + '15', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  quickActionText: { fontSize: 11, fontWeight: '600', color: theme.textSecondary, textAlign: 'center' },
+  badge: { position: 'absolute', top: 10, right: 10, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' },
+  badgeText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
 
   // Settings
   settingsContainer: {
     marginHorizontal: 20,
-    marginTop: 25,
-    borderRadius: 30,
+    marginTop: 24,
+    borderRadius: 28,
     overflow: 'hidden',
-    paddingVertical: 10,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
-    elevation: 5,
+    paddingVertical: 8,
+    backgroundColor: theme.backgroundCard,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: isDark ? 'rgba(184,159,204,0.1)' : 'rgba(212,184,224,0.2)',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  settingRow: { paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1 },
+  settingRow: { paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border },
   settingContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  settingIconBox: { width: 40, height: 40, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  settingLabel: { fontSize: 15, fontWeight: '600' },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  settingIconBox: { width: 38, height: 38, borderRadius: 14, backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' },
+  settingLabel: { fontSize: 15, fontWeight: '500', color: theme.text },
   settingRight: {},
-  settingRightText: { fontSize: 13, marginRight: 5, fontWeight: '600' },
+  settingRightText: { fontSize: 13, marginRight: 6, fontWeight: '500', color: theme.textMuted },
 
   // Logout
-  logoutContainer: { marginTop: 40, paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' },
-  logoutBtn: { width: '100%', borderRadius: 24, padding: 18, alignItems: 'center', borderWidth: 1.5, borderStyle: 'dashed' },
-  logoutText: { fontSize: 16, fontWeight: '800' },
+  logoutContainer: { marginTop: 36, paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' },
+  logoutBtn: {
+    width: '100%',
+    borderRadius: 22,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#D4A5A5' + '50',
+    backgroundColor: '#D4A5A5' + '10',
+  },
+  logoutText: { fontSize: 15, fontWeight: '600', color: '#D4A5A5' },
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalContent: { height: '80%', borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: 'hidden', paddingTop: 20 },
+  modalContent: { height: '80%', borderTopLeftRadius: 36, borderTopRightRadius: 36, overflow: 'hidden', paddingTop: 20, backgroundColor: theme.backgroundCard },
 
   // Guest
-  guestContent: { width: '85%', alignItems: 'center', padding: 35, borderRadius: 40, alignSelf: 'center', marginTop: '35%', elevation: 10 },
-  logoCircle: { width: 90, height: 90, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 25 },
-  guestTitle: { fontSize: 26, fontWeight: '900', marginBottom: 12 },
-  guestSubtitle: { textAlign: 'center', marginBottom: 35, lineHeight: 22 },
-  guestBtn: { width: '100%', borderRadius: 18, overflow: 'hidden', marginBottom: 15 },
-  guestBtnGradient: { padding: 18, alignItems: 'center' },
-  guestBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  guestContent: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  guestBlur: {
+    width: '100%',
+    alignItems: 'center',
+    padding: 36,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(184,159,204,0.15)' : 'rgba(212,184,224,0.25)',
+  },
+  logoCircle: { width: 88, height: 88, borderRadius: 28, backgroundColor: theme.primary + '15', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+  guestTitle: { fontSize: 26, fontWeight: '300', color: theme.text, marginBottom: 10, letterSpacing: 0.3 },
+  guestSubtitle: { textAlign: 'center', marginBottom: 32, lineHeight: 22, color: theme.textSecondary },
+  guestBtn: { width: '100%', borderRadius: 20, overflow: 'hidden', marginBottom: 14 },
+  guestBtnGradient: { padding: 16, alignItems: 'center' },
+  guestBtnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   guestBtnOutline: {
     width: '100%',
-    padding: 16,
+    padding: 14,
     alignItems: 'center',
-    borderWidth: 2,
-    borderRadius: 18
+    borderWidth: 1.5,
+    borderColor: theme.primary,
+    borderRadius: 20
   },
+  guestBtnOutlineText: { fontWeight: '600', fontSize: 16 },
 });
 
 export default Profile;

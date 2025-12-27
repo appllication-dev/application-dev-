@@ -1,6 +1,6 @@
 /**
- * Product Card with Swipeable Images - Kataraa
- * Dark Mode Supported 🌙
+ * Product Card - Cosmic Luxury (Optimized)
+ * Light version without heavy animations
  */
 
 import React, { useState, useRef } from 'react';
@@ -13,20 +13,27 @@ import {
     ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withSpring,
+    withSequence,
+} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 
-const CARD_WIDTH = 150;
-const IMAGE_HEIGHT = 140;
+const CARD_WIDTH = 160;
+const IMAGE_HEIGHT = 170;
 
-export default function ProductCardSwipeable({
+const ProductCardSwipeable = React.memo(({
     item,
     onPress,
     onAddToCart,
     onFavorite,
     isFavorite = false,
     cardWidth = CARD_WIDTH,
-}) {
+}) => {
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const styles = getStyles(theme, isDark);
@@ -34,11 +41,24 @@ export default function ProductCardSwipeable({
     const [activeIndex, setActiveIndex] = useState(0);
     const scrollRef = useRef(null);
 
+    // Heart animation only (no continuous animations)
+    const heartScale = useSharedValue(1);
+    const handleHeartPress = () => {
+        heartScale.value = withSequence(
+            withSpring(1.3, { damping: 8 }),
+            withSpring(1, { damping: 10 })
+        );
+        onFavorite?.(item);
+    };
+
+    const heartStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: heartScale.value }],
+    }));
+
     // Get images
     const productImages = item?.images || [];
     const image1 = productImages[0]?.src || 'https://via.placeholder.com/200';
     const image2 = productImages[1]?.src || productImages[0]?.src || 'https://via.placeholder.com/200';
-
     const images = [image1, image2];
 
     const isOnSale = item?.on_sale && item?.regular_price && item?.sale_price;
@@ -62,8 +82,8 @@ export default function ProductCardSwipeable({
 
     return (
         <View style={[styles.card, { width: cardWidth }]}>
-            {/* Image Slider */}
-            <TouchableOpacity activeOpacity={0.95} onPress={onPress}>
+            {/* Image Section */}
+            <TouchableOpacity activeOpacity={0.9} onPress={() => onPress?.(item)}>
                 <View style={styles.imageContainer}>
                     <ScrollView
                         ref={scrollRef}
@@ -71,29 +91,44 @@ export default function ProductCardSwipeable({
                         pagingEnabled
                         showsHorizontalScrollIndicator={false}
                         onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                        style={{ width: cardWidth }}
-                        contentContainerStyle={{ width: cardWidth * 2 }}
+                        scrollEventThrottle={32}
+                        style={{ width: cardWidth - 12 }}
+                        contentContainerStyle={{ width: (cardWidth - 12) * 2 }}
                     >
                         {images.map((imgUrl, index) => (
                             <Image
                                 key={index}
                                 source={{ uri: imgUrl }}
-                                style={[styles.image, { width: cardWidth, height: IMAGE_HEIGHT }]}
-                                resizeMode="cover"
+                                style={[styles.image, { width: cardWidth - 12, height: IMAGE_HEIGHT }]}
+                                resizeMode="contain"
                             />
                         ))}
                     </ScrollView>
 
-                    {/* TWO DOTS */}
+                    {/* Gradient Overlay */}
+                    <LinearGradient
+                        colors={['transparent', isDark ? 'rgba(26,21,32,0.4)' : 'rgba(254,251,255,0.4)']}
+                        style={styles.imageGradient}
+                    />
+
+                    {/* Dots Indicator */}
                     <View style={styles.dotsContainer}>
-                        <TouchableOpacity onPress={() => handleDotPress(0)}>
-                            <View style={[styles.dot, activeIndex === 0 && styles.dotActive]} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDotPress(1)}>
-                            <View style={[styles.dot, activeIndex === 1 && styles.dotActive]} />
-                        </TouchableOpacity>
+                        {images.map((_, index) => (
+                            <TouchableOpacity key={index} onPress={() => handleDotPress(index)}>
+                                <View style={[
+                                    styles.dot,
+                                    activeIndex === index && styles.dotActive
+                                ]} />
+                            </TouchableOpacity>
+                        ))}
                     </View>
+
+                    {/* Sale Badge */}
+                    {isOnSale && (
+                        <View style={styles.saleBadge}>
+                            <Text style={styles.saleText}>✦ {t('sale')}</Text>
+                        </View>
+                    )}
 
                     {/* Sold Out Overlay */}
                     {isOutOfStock && (
@@ -104,38 +139,21 @@ export default function ProductCardSwipeable({
                         </View>
                     )}
 
-                    {/* Favorite Heart */}
-                    <TouchableOpacity
-                        style={styles.heartBtn}
-                        onPress={() => onFavorite?.(item)}
-                    >
-                        <Ionicons
-                            name={isFavorite ? 'heart' : 'heart-outline'}
-                            size={16}
-                            color={isFavorite ? theme.error : '#999'}
-                        />
+                    {/* Heart Button */}
+                    <TouchableOpacity style={styles.heartBtn} onPress={handleHeartPress}>
+                        <Animated.View style={heartStyle}>
+                            <Ionicons
+                                name={isFavorite ? 'heart' : 'heart-outline'}
+                                size={18}
+                                color={isFavorite ? '#D4A5A5' : theme.textMuted}
+                            />
+                        </Animated.View>
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
 
-            {/* Add to Cart Button */}
-            {!isOutOfStock ? (
-                <TouchableOpacity
-                    style={styles.addToCartBtn}
-                    onPress={() => onAddToCart?.(item)}
-                >
-                    <Ionicons name="add" size={14} color="#fff" />
-                    <Text style={styles.addToCartText}>{t('addToCart')}</Text>
-                </TouchableOpacity>
-            ) : (
-                <View style={[styles.addToCartBtn, styles.soldOutCartBtn]}>
-                    <Ionicons name="close-circle" size={14} color="#fff" />
-                    <Text style={styles.addToCartText}>{t('outOfStock')}</Text>
-                </View>
-            )}
-
             {/* Product Info */}
-            <TouchableOpacity style={styles.infoContainer} onPress={onPress}>
+            <TouchableOpacity style={styles.infoContainer} onPress={() => onPress?.(item)}>
                 <Text style={styles.productName} numberOfLines={2}>
                     {item?.name}
                 </Text>
@@ -151,33 +169,69 @@ export default function ProductCardSwipeable({
                     )}
                 </View>
             </TouchableOpacity>
+
+            {/* Add to Cart Button */}
+            {!isOutOfStock ? (
+                <TouchableOpacity
+                    style={styles.addToCartBtn}
+                    onPress={() => onAddToCart?.(item)}
+                >
+                    <LinearGradient
+                        colors={[theme.primary, theme.primaryDark]}
+                        style={styles.addToCartGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <Ionicons name="add" size={16} color="#fff" />
+                        <Text style={styles.addToCartText}>{t('add')}</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
+            ) : (
+                <View style={[styles.addToCartBtn, styles.soldOutCartBtn]}>
+                    <Text style={styles.soldOutCartText}>{t('outOfStock')}</Text>
+                </View>
+            )}
         </View>
     );
-}
+});
+
+export default ProductCardSwipeable;
 
 const getStyles = (theme, isDark) => StyleSheet.create({
     card: {
-        backgroundColor: theme.backgroundCard,
-        borderRadius: 12,
+        marginRight: 14,
+        marginVertical: 6,
+        borderRadius: 20,
         overflow: 'hidden',
-        marginRight: 8,
-        shadowColor: theme.shadow,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: isDark ? 0.3 : 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        backgroundColor: isDark ? 'rgba(26,21,32,0.7)' : 'rgba(255,255,255,0.8)',
+        borderWidth: 1,
+        borderColor: isDark ? 'rgba(184,159,204,0.12)' : 'rgba(212,184,224,0.25)',
+        shadowColor: theme.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 4,
+        padding: 6,
     },
     imageContainer: {
         position: 'relative',
-        backgroundColor: isDark ? '#2A2A40' : '#f5f5f5',
+        backgroundColor: 'transparent',
+        borderRadius: 16,
         overflow: 'hidden',
     },
     image: {
-        backgroundColor: isDark ? '#2A2A40' : '#f0f0f0',
+        backgroundColor: 'transparent',
+    },
+    imageGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 50,
     },
     dotsContainer: {
         position: 'absolute',
-        bottom: 8,
+        bottom: 10,
         left: 0,
         right: 0,
         flexDirection: 'row',
@@ -186,31 +240,40 @@ const getStyles = (theme, isDark) => StyleSheet.create({
         gap: 6,
     },
     dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255,255,255,0.4)',
     },
     dotActive: {
+        width: 18,
         backgroundColor: theme.primary,
-        borderColor: '#fff',
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+    },
+    saleBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        backgroundColor: isDark ? 'rgba(26,21,32,0.8)' : 'rgba(255,255,255,0.9)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    saleText: {
+        color: theme.primary,
+        fontSize: 10,
+        fontWeight: '700',
     },
     soldOutOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     soldOutBadge: {
-        backgroundColor: '#999',
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 16,
     },
     soldOutText: {
         color: '#fff',
@@ -219,60 +282,73 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     },
     heartBtn: {
         position: 'absolute',
-        bottom: 8,
+        top: 8,
         right: 8,
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: isDark ? 'rgba(30,30,50,0.9)' : 'rgba(255,255,255,0.9)',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: isDark ? 'rgba(26,21,32,0.8)' : 'rgba(255,255,255,0.9)',
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    addToCartBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.primary,
-        paddingVertical: 8,
-        gap: 4,
-    },
-    soldOutCartBtn: {
-        backgroundColor: '#999',
-    },
-    addToCartText: {
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: '600',
     },
     infoContainer: {
-        padding: 8,
-        paddingTop: 4,
+        padding: 10,
+        paddingBottom: 6,
     },
     productName: {
-        fontSize: 11,
+        fontSize: 13,
+        fontWeight: '500',
         color: theme.text,
-        lineHeight: 14,
-        minHeight: 28,
+        lineHeight: 18,
+        minHeight: 36,
     },
     priceRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
         marginTop: 4,
     },
     price: {
-        fontSize: 13,
-        fontWeight: 'bold',
+        fontSize: 14,
+        fontWeight: '700',
         color: theme.text,
     },
     salePrice: {
-        fontSize: 13,
-        fontWeight: 'bold',
-        color: theme.accent,
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.primary,
     },
     originalPrice: {
         fontSize: 11,
         color: theme.textMuted,
         textDecorationLine: 'line-through',
+    },
+    addToCartBtn: {
+        marginTop: 2,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    addToCartGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        gap: 4,
+    },
+    addToCartText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    soldOutCartBtn: {
+        backgroundColor: theme.textMuted,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderRadius: 12,
+    },
+    soldOutCartText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '600',
     },
 });

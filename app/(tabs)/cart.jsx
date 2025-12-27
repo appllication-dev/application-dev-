@@ -213,7 +213,7 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     paddingBottom: 220,
   },
   cartItem: {
-    backgroundColor: theme.backgroundCard,
+    backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : 'rgba(255,255,255,0.8)',
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
@@ -229,7 +229,7 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 12,
-    backgroundColor: isDark ? '#2A2A40' : '#f0f0f0',
+    backgroundColor: 'transparent',
   },
   itemInfo: {
     flex: 1,
@@ -319,7 +319,7 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: theme.backgroundCard,
+    backgroundColor: isDark ? 'rgba(26,21,32,0.95)' : 'rgba(255,255,255,0.95)',
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     padding: 24,

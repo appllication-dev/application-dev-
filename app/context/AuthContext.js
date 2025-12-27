@@ -5,9 +5,16 @@ import { useNotifications } from './NotificationContext';
 
 const AuthContext = createContext();
 
+// CONFIG: Replace these with your actual EmailJS keys from https://dashboard.emailjs.com/
+// It is recommended to put these in your .env file
+const EMAILJS_SERVICE_ID = 'service_g0gjl1g';
+const EMAILJS_TEMPLATE_ID = 'template_s7rwwsp';
+const EMAILJS_PUBLIC_KEY = 'JHLrQcRjlcmDWTiwD';
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [tempOTP, setTempOTP] = useState(null); // Store OTP temporarily
 
     useEffect(() => {
         checkUser();
@@ -48,33 +55,19 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = async (userData) => {
-        // Check if we have a stored profile for this email
         const existingProfile = await getStoredProfile(userData.email);
         const finalUser = existingProfile ? { ...existingProfile, ...userData } : userData;
-
         setUser(finalUser);
         await storage.setItem('user', finalUser);
         await saveToProfiles(finalUser);
-
-        addNotification(
-            'notifWelcomeBackTitle',
-            'notifWelcomeBackMsg',
-            'info',
-            { name: finalUser.displayName || finalUser.email }
-        );
+        addNotification('notifWelcomeBackTitle', 'notifWelcomeBackMsg', 'info', { name: finalUser.displayName || finalUser.email });
     };
 
     const signup = async (userData) => {
         setUser(userData);
         await storage.setItem('user', userData);
         await saveToProfiles(userData);
-
-        addNotification(
-            'notifWelcomeNewTitle',
-            'notifWelcomeNewMsg',
-            'success',
-            { name: userData.displayName }
-        );
+        addNotification('notifWelcomeNewTitle', 'notifWelcomeNewMsg', 'success', { name: userData.displayName });
     };
 
     const logout = async () => {
@@ -90,8 +83,92 @@ export const AuthProvider = ({ children }) => {
         await saveToProfiles(newUser);
     };
 
+    const resetPassword = async (email) => {
+        // 1. Generate OTP
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        console.log('Generated OTP:', otp); // For testing if email fails
+
+        // 2. Store OTP temporarily (in memory for this session)
+        setTempOTP({ email, code: otp, timestamp: Date.now() });
+
+        // 3. Send Email
+        if (EMAILJS_SERVICE_ID === 'YOUR_SERVICE_ID') {
+            console.warn('EmailJS keys not set. Simulate success. Check console for OTP.');
+            // Allow proceeding without email for testing
+            return Promise.resolve();
+        }
+
+        // 3. Send Email via REST API (No SDK needed)
+        try {
+            const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    service_id: EMAILJS_SERVICE_ID,
+                    template_id: EMAILJS_TEMPLATE_ID,
+                    user_id: EMAILJS_PUBLIC_KEY,
+                    template_params: {
+                        to_email: email,
+                        otp_code: otp,
+                        to_name: email.split('@')[0],
+                    },
+                }),
+            });
+
+            if (response.ok) {
+                console.log('Email sent successfully via API');
+            } else {
+                const text = await response.text();
+                console.error('EmailJS API Error:', text);
+                throw new Error('Failed to send email via API');
+            }
+        } catch (error) {
+            console.error('EmailJS Error:', error);
+            throw new Error('Failed to send email. Please check internet connection.');
+        }
+    };
+
+    const verifyResetCode = async (email, code) => {
+        // Verify against stored OTP
+        return new Promise((resolve, reject) => {
+            if (!tempOTP) {
+                reject(new Error('No OTP request found. Please try again.'));
+                return;
+            }
+            if (tempOTP.email !== email) {
+                reject(new Error('Email does not match.'));
+                return;
+            }
+            // Check expiry (e.g. 10 mins)
+            if (Date.now() - tempOTP.timestamp > 10 * 60 * 1000) {
+                reject(new Error('Code expired. Please request a new one.'));
+                return;
+            }
+
+            if (code === tempOTP.code) {
+                resolve(true);
+            } else {
+                reject(new Error('Invalid code'));
+            }
+        });
+    };
+
+    const confirmNewPassword = async (email, newPassword) => {
+        // Update user profile password (simulated since we use local storage auth primarily)
+        // In a real app with Firebase, you would use updatePassword()
+        const profile = await getStoredProfile(email);
+        if (profile) {
+            profile.password = newPassword; // Caution: Storing plain text password is bad practice, strictly for MVP/Prototype
+            await saveToProfiles(profile);
+        }
+        setTempOTP(null); // Clear OTP
+        return Promise.resolve();
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser, resetPassword, verifyResetCode, confirmNewPassword }}>
             {children}
         </AuthContext.Provider>
     );

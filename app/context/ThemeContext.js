@@ -1,5 +1,6 @@
 /**
- * Theme Context - Dark/Light Mode Support
+ * Theme Context - Cosmic Luxury Design System
+ * Dark/Light Mode with Pearl & Violet Themes
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -7,60 +8,74 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ThemeContext = createContext();
 
+// Light Theme - Pearl Cosmos
 export const LIGHT_THEME = {
-    // Primary Colors - Blush Pink & Rose Gold
-    primary: '#F5B5C8',
-    primaryDark: '#B76E79',
-    primaryLight: '#FFD6E0',
+    // Primary Colors - Soft Orchid Violet
+    primary: '#D4B8E0',
+    primaryDark: '#A78BBD',
+    primaryLight: '#F0E6F5',
 
-    // Backgrounds - Champagne/Cream
-    background: '#FFF9F5',
+    // Backgrounds - Pearl White
+    background: '#F3F0F7',
     backgroundCard: '#ffffff',
-    backgroundSecondary: '#FDF2F0',
+    backgroundSecondary: '#F8F4FC',
+    backgroundGlass: 'rgba(255, 255, 255, 0.75)',
 
-    // Text - Deep Charcoal
-    text: '#3D2314',
-    textSecondary: '#7A5C5C',
-    textMuted: '#A68E8E',
+    // Text - Cosmic Purple
+    text: '#2D2639',
+    textSecondary: '#6B5A7A',
+    textMuted: '#9B8FA6',
+
+    // Accent Colors
+    accent: '#C9B8DC',
+    accentGold: '#E8DCC8',
+    moonSilver: '#E8E4EC',
 
     // Other
-    border: '#FFE4E9',
-    shadow: 'rgba(183, 110, 121, 0.15)',
-    overlay: 'rgba(61, 35, 20, 0.4)',
+    border: '#EDE6F2',
+    shadow: 'rgba(167, 139, 189, 0.12)',
+    overlay: 'rgba(45, 38, 57, 0.4)',
+    glow: 'rgba(212, 184, 224, 0.4)',
 
     // Status
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    accent: '#B76E79',
+    success: '#7BB4A3',
+    warning: '#E8C88C',
+    error: '#D4A5A5',
 };
 
+// Dark Theme - Cosmic Night
 export const DARK_THEME = {
-    // Primary Colors - Warm Rose Gold
-    primary: '#B76E79',
-    primaryDark: '#9A5B64',
-    primaryLight: '#F5B5C8',
+    // Primary Colors - Glowing Violet
+    primary: '#B89FCC',
+    primaryDark: '#8B6FA8',
+    primaryLight: '#D4B8E0',
 
-    // Backgrounds - Deep Espresso
-    background: '#1A120F',
-    backgroundCard: '#2A1D18',
-    backgroundSecondary: '#3D2314',
+    // Backgrounds - Deep Cosmic
+    background: '#0D0A12',
+    backgroundCard: '#1A1520',
+    backgroundSecondary: '#241E2D',
+    backgroundGlass: 'rgba(26, 21, 32, 0.85)',
 
-    // Text - Shell/Cream
-    text: '#FFF9F5',
-    textSecondary: '#F5B5C8',
-    textMuted: '#A68E8E',
+    // Text - Pearl Light
+    text: '#F8F4FC',
+    textSecondary: '#C9B8DC',
+    textMuted: '#8A7A9A',
+
+    // Accent Colors
+    accent: '#D4C4E3',
+    accentGold: '#C9BBA8',
+    moonSilver: '#A8A0B0',
 
     // Other
-    border: 'rgba(183, 110, 121, 0.2)',
-    shadow: 'rgba(183, 110, 121, 0.3)',
+    border: 'rgba(184, 159, 204, 0.2)',
+    shadow: 'rgba(0, 0, 0, 0.4)',
     overlay: 'rgba(0, 0, 0, 0.7)',
+    glow: 'rgba(184, 159, 204, 0.3)',
 
     // Status
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    accent: '#F5B5C8',
+    success: '#7BB4A3',
+    warning: '#E8C88C',
+    error: '#D4A5A5',
 };
 
 export const ThemeProvider = ({ children }) => {

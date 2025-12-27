@@ -21,14 +21,14 @@ import { useTranslation } from '../hooks/useTranslation';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
 
-export default function ProductCardSoko({
+const ProductCardSoko = React.memo(({
     item,
     onPress,
     onAddToCart,
     onFavorite,
     isFavorite = false,
     showBrand = false,
-}) {
+}) => {
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const styles = getStyles(theme, isDark, t);
@@ -49,7 +49,7 @@ export default function ProductCardSoko({
     return (
         <TouchableOpacity
             style={styles.card}
-            onPress={onPress}
+            onPress={() => onPress?.(item)}
             activeOpacity={0.9}
         >
             {/* Image Container */}
@@ -132,12 +132,14 @@ export default function ProductCardSoko({
             </View>
         </TouchableOpacity>
     );
-}
+});
+
+export default ProductCardSoko;
 
 const getStyles = (theme, isDark, t) => StyleSheet.create({
     card: {
         width: CARD_WIDTH,
-        backgroundColor: theme.backgroundCard,
+        backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : 'rgba(255,255,255,0.8)',
         borderRadius: 16,
         marginHorizontal: 4,
         marginBottom: 16,
@@ -152,12 +154,12 @@ const getStyles = (theme, isDark, t) => StyleSheet.create({
         position: 'relative',
         width: '100%',
         aspectRatio: 1,
-        backgroundColor: isDark ? '#2A2A40' : '#f5f5f5',
+        backgroundColor: 'transparent',
     },
     image: {
         width: '100%',
         height: '100%',
-        backgroundColor: isDark ? '#2A2A40' : '#f0f0f0',
+        backgroundColor: 'transparent',
     },
     favoriteBtn: {
         position: 'absolute',

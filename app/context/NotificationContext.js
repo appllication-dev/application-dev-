@@ -88,3 +88,6 @@ export const useNotifications = () => {
     }
     return context;
 };
+
+// Default export for Expo Router compatibility
+export default function NotificationContextRoute() { return null; }

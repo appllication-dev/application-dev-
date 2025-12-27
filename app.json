@@ -39,6 +39,13 @@
           "speechRecognitionPermission": "نحتاج إلى إذن للتعرف على الكلام لتمكين البحث الصوتي.",
           "microphonePermission": "نحتاج إلى إذن للوصول إلى الميكروفون لتمكين البحث الصوتي."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon_final.png",
+          "color": "#667eea"
+        }
       ]
     ],
     "experiments": {

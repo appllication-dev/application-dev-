@@ -30,10 +30,13 @@ import Animated, {
 
 const { width, height } = Dimensions.get("window");
 
+import { useTranslation } from "./hooks/useTranslation";
+
 export default function AuthScreen() {
     const router = useRouter();
     const { theme, isDark } = useTheme();
     const { login, signup } = useAuth();
+    const { t } = useTranslation();
 
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState("");
@@ -57,7 +60,8 @@ export default function AuthScreen() {
                 displayName: name || email.split("@")[0],
                 phone: phone,
                 photoURL: null,
-                id: Date.now().toString()
+                id: Date.now().toString(),
+                uid: `local_${Date.now().toString()}`, // For Firebase compatibility
             };
 
             if (isLogin) {
@@ -99,26 +103,26 @@ export default function AuthScreen() {
                             </LinearGradient>
                             <Text style={[styles.brandText, { color: theme.text }]}>KATARAA</Text>
                             <Text style={[styles.tagline, { color: theme.textMuted }]}>
-                                {isLogin ? "Welcome back to Luxury" : "Join the Elite Community"}
+                                {isLogin ? t('taglineLogin') : t('taglineRegister')}
                             </Text>
                         </Animated.View>
 
                         <Animated.View entering={FadeInUp.delay(200).duration(800)} style={styles.formSlot}>
                             <BlurView intensity={isDark ? 20 : 60} tint={isDark ? "dark" : "light"} style={styles.glassCard}>
                                 <Text style={[styles.formTitle, { color: theme.text }]}>
-                                    {isLogin ? "Sign In" : "Register"}
+                                    {isLogin ? t('signIn') : t('createAccount')}
                                 </Text>
 
                                 {!isLogin && (
                                     <View style={styles.inputBox}>
-                                        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Full Name</Text>
+                                        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('fullName')}</Text>
                                         <View style={[styles.inputWrapper, focusedField === "name" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
                                             <Ionicons name="person-outline" size={20} color={focusedField === "name" ? theme.primary : theme.textMuted} />
                                             <TextInput
                                                 onFocus={() => setFocusedField("name")}
                                                 onBlur={() => setFocusedField(null)}
                                                 style={[styles.input, { color: theme.text }]}
-                                                placeholder="John Doe"
+                                                placeholder={t('placeholderName')}
                                                 placeholderTextColor={theme.textMuted + "80"}
                                                 value={name}
                                                 onChangeText={setName}
@@ -128,14 +132,14 @@ export default function AuthScreen() {
                                 )}
 
                                 <View style={styles.inputBox}>
-                                    <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Email Address</Text>
+                                    <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('email')}</Text>
                                     <View style={[styles.inputWrapper, focusedField === "email" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
                                         <Ionicons name="mail-outline" size={20} color={focusedField === "email" ? theme.primary : theme.textMuted} />
                                         <TextInput
                                             onFocus={() => setFocusedField("email")}
                                             onBlur={() => setFocusedField(null)}
                                             style={[styles.input, { color: theme.text }]}
-                                            placeholder="style@kataraa.com"
+                                            placeholder={t('placeholderEmail')}
                                             placeholderTextColor={theme.textMuted + "80"}
                                             value={email}
                                             onChangeText={setEmail}
@@ -147,14 +151,14 @@ export default function AuthScreen() {
 
                                 {!isLogin && (
                                     <View style={styles.inputBox}>
-                                        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Phone Number</Text>
+                                        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('phone')}</Text>
                                         <View style={[styles.inputWrapper, focusedField === "phone" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
                                             <Ionicons name="call-outline" size={20} color={focusedField === "phone" ? theme.primary : theme.textMuted} />
                                             <TextInput
                                                 onFocus={() => setFocusedField("phone")}
                                                 onBlur={() => setFocusedField(null)}
                                                 style={[styles.input, { color: theme.text }]}
-                                                placeholder="+965 XXXX XXXX"
+                                                placeholder={t('placeholderPhone')}
                                                 placeholderTextColor={theme.textMuted + "80"}
                                                 value={phone}
                                                 onChangeText={setPhone}
@@ -165,14 +169,14 @@ export default function AuthScreen() {
                                 )}
 
                                 <View style={styles.inputBox}>
-                                    <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Password</Text>
+                                    <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('password')}</Text>
                                     <View style={[styles.inputWrapper, focusedField === "pass" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
                                         <Ionicons name="lock-closed-outline" size={20} color={focusedField === "pass" ? theme.primary : theme.textMuted} />
                                         <TextInput
                                             onFocus={() => setFocusedField("pass")}
                                             onBlur={() => setFocusedField(null)}
                                             style={[styles.input, { color: theme.text }]}
-                                            placeholder="••••••••"
+                                            placeholder={t('placeholderPass')}
                                             placeholderTextColor={theme.textMuted + "80"}
                                             value={password}
                                             onChangeText={setPassword}
@@ -182,8 +186,8 @@ export default function AuthScreen() {
                                 </View>
 
                                 {isLogin && (
-                                    <TouchableOpacity style={styles.forgotBtn}>
-                                        <Text style={[styles.forgotText, { color: theme.primary }]}>Forgot Password?</Text>
+                                    <TouchableOpacity style={styles.forgotBtn} onPress={() => router.push('/forgot-password')}>
+                                        <Text style={[styles.forgotText, { color: theme.primary }]}>{t('forgotPassword')}</Text>
                                     </TouchableOpacity>
                                 )}
 
@@ -198,7 +202,7 @@ export default function AuthScreen() {
                                             <ActivityIndicator color="#FFF" />
                                         ) : (
                                             <>
-                                                <Text style={styles.submitText}>{isLogin ? "Sign In" : "Create Account"}</Text>
+                                                <Text style={styles.submitText}>{isLogin ? t('signIn') : t('createAccount')}</Text>
                                                 <Ionicons name="chevron-forward" size={20} color="#FFF" />
                                             </>
                                         )}
@@ -208,9 +212,9 @@ export default function AuthScreen() {
                                 <View style={styles.switchSlot}>
                                     <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
                                         <Text style={[styles.switchText, { color: theme.textMuted }]}>
-                                            {isLogin ? "Don't have an account? " : "Already have an account? "}
+                                            {isLogin ? t('noAccount') : t('hasAccount')}
                                             <Text style={[styles.switchLink, { color: theme.primary }]}>
-                                                {isLogin ? "Join now" : "Login here"}
+                                                {isLogin ? t('joinNow') : t('loginLink')}
                                             </Text>
                                         </Text>
                                     </TouchableOpacity>
@@ -219,7 +223,7 @@ export default function AuthScreen() {
                         </Animated.View>
 
                         <View style={styles.socialSlot}>
-                            <Text style={[styles.socialTitle, { color: theme.textMuted }]}>OR CONTINUE WITH</Text>
+                            <Text style={[styles.socialTitle, { color: theme.textMuted }]}>{t('orContinue')}</Text>
                             <View style={styles.socialRow}>
                                 <TouchableOpacity style={[styles.socialIcon, { backgroundColor: isDark ? "#1A1A2E" : "#FFF" }]}>
                                     <Ionicons name="logo-google" size={24} color="#EA4335" />

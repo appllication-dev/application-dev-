@@ -122,3 +122,6 @@ export const getGovernorateName = (governorateId) => {
 export const isSpecialCity = (cityName) => {
   return specialCities.includes(cityName);
 };
+
+// Default export for Expo Router compatibility
+export default function KuwaitLocationsRoute() { return null; }

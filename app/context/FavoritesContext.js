@@ -42,7 +42,7 @@ export const FavoritesProvider = ({ children }) => {
     }
   };
 
-  const toggleFavorite = (product) => {
+  const toggleFavorite = React.useCallback((product) => {
     setFavorites(prev => {
       const exists = prev.find(item => item.id === product.id);
       if (exists) {
@@ -50,15 +50,15 @@ export const FavoritesProvider = ({ children }) => {
       }
       return [...prev, product];
     });
-  };
+  }, []);
 
-  const isFavorite = (productId) => {
+  const isFavorite = React.useCallback((productId) => {
     return favorites.some(item => item.id === productId);
-  };
+  }, [favorites]);
 
-  const clearFavorites = () => {
+  const clearFavorites = React.useCallback(() => {
     setFavorites([]);
-  };
+  }, []);
 
   return (
     <FavoritesContext.Provider value={{

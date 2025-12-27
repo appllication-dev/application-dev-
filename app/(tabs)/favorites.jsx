@@ -1,9 +1,9 @@
 /**
- * Favorites Screen - Kataraa
- * Dark Mode Supported 🌙
+ * Favorites Screen - Cosmic Luxury Edition
+ * 🌙 Floating glass cards with ethereal animations
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,27 +26,25 @@ import { BlurView } from 'expo-blur';
 import Animated, {
   FadeInDown,
   FadeInRight,
-  SlideInRight,
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withRepeat,
-  withTiming
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
-import { useEffect, useState } from 'react';
+
+const { width } = Dimensions.get('window');
 
 export default function FavoritesScreen() {
   const router = useRouter();
   const { favorites, toggleFavorite } = useFavorites();
   const { addToCart } = useCart();
   const { theme, isDark } = useTheme();
-
   const { t } = useTranslation();
   const { language } = useSettings();
-  const [, setTick] = useState(0); // Force update state
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    // Force re-render when language changes
     setTick(t => t + 1);
   }, [language]);
 
@@ -56,20 +54,32 @@ export default function FavoritesScreen() {
     return `${parseFloat(price || 0).toFixed(3)} ${t('currency')}`;
   };
 
-  const renderItem = ({ item, index }) => (
+  const handleItemPress = React.useCallback((id) => {
+    router.push(`/product/${id}`);
+  }, [router]);
+
+  const handleAddToCart = React.useCallback((item) => {
+    addToCart({ ...item, quantity: 1 });
+  }, [addToCart]);
+
+  const handleToggleFavorite = React.useCallback((item) => {
+    toggleFavorite(item);
+  }, [toggleFavorite]);
+
+  const renderItem = React.useCallback(({ item, index }) => (
     <Animated.View
       entering={FadeInDown.delay(index * 100).springify()}
       style={styles.cardContainer}
     >
-      <BlurView intensity={isDark ? 20 : 40} tint={isDark ? "dark" : "light"} style={styles.card}>
+      <BlurView intensity={isDark ? 25 : 50} tint={isDark ? "dark" : "light"} style={styles.card}>
         <TouchableOpacity
           style={styles.cardContent}
-          onPress={() => router.push(`/product/${item.id}`)}
+          onPress={() => handleItemPress(item.id)}
         >
           <View style={styles.imageContainer}>
             <Image source={{ uri: item.image }} style={styles.image} />
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.4)']}
+              colors={['transparent', isDark ? 'rgba(26,21,32,0.5)' : 'rgba(254,251,255,0.5)']}
               style={styles.imageOverlay}
             />
           </View>
@@ -84,27 +94,37 @@ export default function FavoritesScreen() {
 
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: theme.primary + '20' }]}
-            onPress={() => addToCart({ ...item, quantity: 1 })}
+            style={styles.actionBtn}
+            onPress={() => handleAddToCart(item)}
           >
-            <Ionicons name="cart" size={20} color={theme.primary} />
+            <LinearGradient
+              colors={[theme.primary + '30', theme.primary + '20']}
+              style={styles.actionBtnGradient}
+            >
+              <Ionicons name="cart" size={20} color={theme.primary} />
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: theme.error + '20' }]}
-            onPress={() => toggleFavorite(item)}
+            style={styles.actionBtn}
+            onPress={() => handleToggleFavorite(item)}
           >
-            <Ionicons name="heart-dislike" size={20} color={theme.error} />
+            <LinearGradient
+              colors={['#D4A5A5' + '30', '#D4A5A5' + '20']}
+              style={styles.actionBtnGradient}
+            >
+              <Ionicons name="heart-dislike" size={20} color="#D4A5A5" />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </BlurView>
     </Animated.View>
-  );
+  ), [isDark, styles, theme, handleItemPress, handleAddToCart, handleToggleFavorite, formatPrice]);
 
   return (
     <View style={styles.container}>
-      {/* Dynamic Background Shapes */}
-      <View style={styles.bgCircle1} />
-      <View style={styles.bgCircle2} />
+      {/* Cosmic Background Orbs */}
+      <View style={styles.bgOrb1} />
+      <View style={styles.bgOrb2} />
 
       <View style={styles.headerContainer}>
         <LinearGradient
@@ -120,7 +140,9 @@ export default function FavoritesScreen() {
                 <Text style={styles.headerSubtitle}>{t('productCount', { count: favorites.length })}</Text>
               </View>
               <Animated.View entering={FadeInRight.delay(500)}>
-                <Ionicons name="heart" size={40} color="#fff" style={styles.headerIcon} />
+                <View style={styles.headerIconCircle}>
+                  <Ionicons name="heart" size={28} color="#fff" />
+                </View>
               </Animated.View>
             </View>
           </SafeAreaView>
@@ -133,7 +155,7 @@ export default function FavoritesScreen() {
           style={styles.emptyContainer}
         >
           <View style={styles.emptyIconCircle}>
-            <Ionicons name="heart-outline" size={60} color={theme.primary} />
+            <Ionicons name="heart-outline" size={56} color={theme.primary} />
           </View>
           <Text style={styles.emptyTitle}>{t('noFavorites')}</Text>
           <Text style={styles.emptySubtitle}>{t('addFavoritesHint')}</Text>
@@ -143,7 +165,7 @@ export default function FavoritesScreen() {
           >
             <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.browseBtnGradient}>
               <Text style={styles.browseBtnText}>{t('browseProducts')}</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
@@ -163,89 +185,90 @@ export default function FavoritesScreen() {
 const getStyles = (theme, isDark) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: isDark ? '#0F0F1A' : '#FAFAFF',
+    backgroundColor: theme.background,
   },
-  bgCircle1: {
+  bgOrb1: {
     position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: theme.primary + '10',
+    top: -80,
+    right: -80,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: theme.primary,
+    zIndex: -1,
   },
-  bgCircle2: {
+  bgOrb2: {
     position: 'absolute',
-    bottom: -50,
-    left: -50,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: theme.primary + '05',
+    bottom: 50,
+    left: -60,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: theme.accent + '08',
+    zIndex: -1,
   },
   headerContainer: {
     overflow: 'hidden',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
     shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 10,
+    elevation: 12,
   },
   header: {
-    paddingBottom: 35,
-    paddingTop: 10,
+    paddingBottom: 32,
+    paddingTop: 12,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 25,
+    paddingHorizontal: 24,
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: -0.5,
+    fontSize: 30,
+    fontWeight: '300',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: 14,
-    marginTop: 2,
-    fontWeight: '500',
-    textAlign: 'left',
+    marginTop: 4,
+    fontWeight: '400',
   },
-  headerIcon: {
-    opacity: 0.6,
-    textShadowColor: 'rgba(255,255,255,0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+  headerIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     padding: 20,
-    paddingTop: 30,
+    paddingTop: 28,
     paddingBottom: 100,
   },
   cardContainer: {
-    marginBottom: 20,
+    marginBottom: 18,
     borderRadius: 24,
     overflow: 'hidden',
-    // Shadow for the glass effect
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDark ? 0.3 : 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
   },
   card: {
-    padding: 12,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 24,
     borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-    backgroundColor: isDark ? 'rgba(30,30,40,0.4)' : 'rgba(255,255,255,0.75)', // White tint for light mode
+    borderColor: isDark ? 'rgba(184,159,204,0.15)' : 'rgba(212,184,224,0.25)',
+    borderRadius: 24,
   },
   cardContent: {
     flex: 1,
@@ -253,11 +276,11 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     alignItems: 'center',
   },
   imageContainer: {
-    width: 90,
-    height: 90,
+    width: 88,
+    height: 88,
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: isDark ? '#1A1A2E' : '#FFF',
+    backgroundColor: isDark ? '#1A1520' : '#FEFBFF',
   },
   image: {
     width: '100%',
@@ -268,63 +291,68 @@ const getStyles = (theme, isDark) => StyleSheet.create({
   },
   info: {
     flex: 1,
-    marginLeft: 15,
-    paddingRight: 5,
+    marginLeft: 16,
+    paddingRight: 8,
   },
   name: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.text,
     textAlign: 'right',
     marginBottom: 10,
-    lineHeight: 20,
+    lineHeight: 21,
   },
   priceBadge: {
     alignSelf: 'flex-end',
-    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: theme.primary + '15',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 14,
   },
   price: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: theme.primary,
   },
   actions: {
-    marginLeft: 10,
+    marginLeft: 12,
     gap: 10,
   },
   actionBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  actionBtnGradient: {
+    width: 46,
+    height: 46,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 16,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
-    marginTop: -50,
+    paddingHorizontal: 44,
+    marginTop: -40,
   },
   emptyIconCircle: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: theme.primary + '10',
+    backgroundColor: theme.primary + '12',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 25,
+    marginBottom: 28,
     borderWidth: 1,
     borderColor: theme.primary + '20',
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: '300',
     color: theme.text,
     marginBottom: 10,
+    letterSpacing: 0.3,
   },
   emptySubtitle: {
     fontSize: 15,
@@ -334,25 +362,26 @@ const getStyles = (theme, isDark) => StyleSheet.create({
   },
   browseBtn: {
     marginTop: 40,
-    width: '80%',
-    borderRadius: 20,
+    width: '85%',
+    borderRadius: 24,
     overflow: 'hidden',
-    elevation: 8,
     shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   browseBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
+    paddingVertical: 16,
     gap: 12,
   },
   browseBtnText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

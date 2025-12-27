@@ -1,7 +1,6 @@
 /**
- * Search Screen - Kataraa
- * Dedicated search page for finding products
- * Dark Mode Supported 🌙
+ * Search Screen - Cosmic Luxury Edition
+ * 🌙 Ethereal search with floating glass elements
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -17,8 +16,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from './context/ThemeContext';
 import { useCart } from './context/CartContext';
 import { useCartAnimation } from './context/CartAnimationContext';
@@ -44,7 +45,6 @@ export default function SearchScreen() {
     const [recentSearches, setRecentSearches] = useState([]);
     const [hasSearched, setHasSearched] = useState(false);
 
-    // Load recent searches on mount
     useEffect(() => {
         loadRecentSearches();
     }, []);
@@ -79,7 +79,6 @@ export default function SearchScreen() {
         }
     };
 
-    // Debounced search
     useEffect(() => {
         if (query.length >= 2) {
             const timer = setTimeout(() => {
@@ -113,11 +112,11 @@ export default function SearchScreen() {
         setQuery(searchQuery);
     };
 
-    const handleProductPress = (item) => {
+    const handleProductPress = React.useCallback((item) => {
         router.push(`/product/${item.id}`);
-    };
+    }, [router]);
 
-    const handleAddToCart = (item) => {
+    const handleAddToCart = React.useCallback((item) => {
         triggerAddToCart({
             id: item.id,
             name: item.name,
@@ -125,31 +124,35 @@ export default function SearchScreen() {
             image: item.images?.[0]?.src,
             quantity: 1,
         });
-    };
+    }, [triggerAddToCart]);
 
-    const handleFavorite = (item) => {
+    const handleFavorite = React.useCallback((item) => {
         toggleFavorite({
             id: item.id,
             name: item.name,
             price: item.price,
             image: item.images?.[0]?.src,
         });
-    };
+    }, [toggleFavorite]);
 
-    const renderProduct = ({ item }) => (
+    const renderProduct = React.useCallback(({ item }) => (
         <View style={styles.gridItem}>
             <ProductCardSoko
                 item={item}
-                onPress={() => handleProductPress(item)}
+                onPress={handleProductPress}
                 onAddToCart={handleAddToCart}
                 onFavorite={handleFavorite}
                 isFavorite={isFavorite(item.id)}
             />
         </View>
-    );
+    ), [handleProductPress, handleAddToCart, handleFavorite, isFavorite, styles.gridItem]);
 
     return (
         <View style={styles.container}>
+            {/* Cosmic Background */}
+            <View style={styles.bgOrb1} />
+            <View style={styles.bgOrb2} />
+
             {/* Header */}
             <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.header}>
                 <SafeAreaView edges={['top']}>
@@ -158,29 +161,31 @@ export default function SearchScreen() {
                             style={styles.backBtn}
                             onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
                         >
-                            <Ionicons name="arrow-back" size={24} color="#fff" />
+                            <Ionicons name="arrow-back" size={22} color="#fff" />
                         </TouchableOpacity>
                         <Text style={styles.headerTitle}>{t('searchProducts')}</Text>
-                        <View style={{ width: 40 }} />
+                        <View style={{ width: 44 }} />
                     </View>
 
-                    {/* Search Input */}
-                    <View style={styles.searchInputContainer}>
-                        <Ionicons name="search" size={20} color={theme.textMuted} />
-                        <TextInput
-                            style={[styles.searchInput, { color: theme.text }]}
-                            placeholder={t('searchHere')}
-                            placeholderTextColor={theme.textMuted}
-                            value={query}
-                            onChangeText={setQuery}
-                            autoFocus
-                            returnKeyType="search"
-                        />
-                        {query.length > 0 && (
-                            <TouchableOpacity onPress={() => setQuery('')}>
-                                <Ionicons name="close-circle" size={20} color={theme.textMuted} />
-                            </TouchableOpacity>
-                        )}
+                    {/* Glass Search Input */}
+                    <View style={styles.searchInputWrapper}>
+                        <View style={[styles.searchInputContainer, { backgroundColor: isDark ? 'rgba(26,21,32,0.7)' : 'rgba(255,255,255,0.8)' }]}>
+                            <Ionicons name="search" size={20} color={theme.textMuted} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder={t('searchHere')}
+                                placeholderTextColor={theme.textMuted}
+                                value={query}
+                                onChangeText={setQuery}
+                                autoFocus
+                                returnKeyType="search"
+                            />
+                            {query.length > 0 && (
+                                <TouchableOpacity onPress={() => setQuery('')}>
+                                    <Ionicons name="close-circle" size={20} color={theme.textMuted} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 </SafeAreaView>
             </LinearGradient>
@@ -188,62 +193,73 @@ export default function SearchScreen() {
             {/* Content */}
             <View style={styles.content}>
                 {!hasSearched && query.length === 0 ? (
-                    // Before search - show recent searches
                     <View style={styles.emptyContainer}>
                         {recentSearches.length > 0 && (
                             <>
                                 <View style={styles.recentHeader}>
-                                    <Text style={[styles.recentTitle, { color: theme.text }]}>
+                                    <Text style={styles.recentTitle}>
                                         {t('recentSearches')}
                                     </Text>
                                     <TouchableOpacity onPress={clearHistory}>
-                                        <Text style={[styles.clearBtn, { color: theme.primary }]}>
+                                        <Text style={styles.clearBtn}>
                                             {t('clearHistory')}
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.chipsContainer}>
                                     {recentSearches.map((item, index) => (
-                                        <TouchableOpacity
+                                        <Animated.View
                                             key={index}
-                                            style={[styles.chip, { backgroundColor: theme.backgroundCard }]}
-                                            onPress={() => handleRecentSearchPress(item)}
+                                            entering={FadeInDown.delay(index * 50).springify()}
                                         >
-                                            <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
-                                            <Text style={[styles.chipText, { color: theme.text }]}>{item}</Text>
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.chip}
+                                                onPress={() => handleRecentSearchPress(item)}
+                                            >
+                                                <BlurView
+                                                    intensity={isDark ? 25 : 45}
+                                                    tint={isDark ? "dark" : "light"}
+                                                    style={styles.chipBlur}
+                                                >
+                                                    <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
+                                                    <Text style={styles.chipText}>{item}</Text>
+                                                </BlurView>
+                                            </TouchableOpacity>
+                                        </Animated.View>
                                     ))}
                                 </View>
                             </>
                         )}
                         <View style={styles.startSearchContainer}>
-                            <Ionicons name="search-outline" size={60} color={theme.textMuted} />
-                            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                            <View style={styles.searchIconCircle}>
+                                <Ionicons name="search-outline" size={48} color={theme.primary} />
+                            </View>
+                            <Text style={styles.emptyText}>
                                 {t('startSearching')}
                             </Text>
                         </View>
                     </View>
                 ) : loading ? (
-                    // Loading
                     <View style={styles.loadingContainer}>
+                        <View style={styles.loadingGlow} />
                         <ActivityIndicator size="large" color={theme.primary} />
-                        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+                        <Text style={styles.loadingText}>
                             {t('searching')}
                         </Text>
                     </View>
                 ) : results.length === 0 && hasSearched ? (
-                    // No results
                     <View style={styles.emptyContainer}>
-                        <Ionicons name="sad-outline" size={60} color={theme.textMuted} />
-                        <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                        <View style={styles.emptyIconCircle}>
+                            <Ionicons name="search-outline" size={48} color={theme.textMuted} />
+                        </View>
+                        <Text style={styles.emptyTitle}>
                             {t('noResultsFound')}
                         </Text>
-                        <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                        <Text style={styles.emptyText}>
                             {t('tryDifferentSearch')}
                         </Text>
                     </View>
                 ) : (
-                    // Results
                     <FlatList
                         data={results}
                         renderItem={renderProduct}
@@ -263,49 +279,73 @@ const getStyles = (theme, isDark) => StyleSheet.create({
         flex: 1,
         backgroundColor: theme.background,
     },
+    bgOrb1: {
+        position: 'absolute',
+        top: 100,
+        right: -80,
+        width: 200,
+        height: 200,
+        borderRadius: 100,
+        backgroundColor: theme.primary + '10',
+        zIndex: -1,
+    },
+    bgOrb2: {
+        position: 'absolute',
+        bottom: 100,
+        left: -60,
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+        backgroundColor: theme.accent + '08',
+        zIndex: -1,
+    },
     header: {
-        paddingBottom: 16,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 8,
+        paddingHorizontal: 20,
+        paddingTop: 10,
     },
     backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '300',
         color: '#fff',
+        letterSpacing: 0.5,
+    },
+    searchInputWrapper: {
+        marginHorizontal: 20,
+        marginTop: 16,
+        borderRadius: 20,
+        overflow: 'hidden',
     },
     searchInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: theme.backgroundCard,
-        marginHorizontal: 16,
-        marginTop: 12,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        height: 50,
-        shadowColor: theme.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: isDark ? 0.3 : 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        paddingHorizontal: 18,
+        height: 52,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 20,
     },
     searchInput: {
         flex: 1,
         fontSize: 16,
         marginLeft: 12,
         paddingVertical: 0,
+        color: theme.text,
     },
     content: {
         flex: 1,
@@ -314,74 +354,115 @@ const getStyles = (theme, isDark) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingTop: 20,
-        paddingBottom: 12,
+        paddingHorizontal: 20,
+        paddingTop: 24,
+        paddingBottom: 16,
     },
     recentTitle: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
+        color: theme.text,
+        letterSpacing: 0.3,
     },
     clearBtn: {
-        fontSize: 14,
+        fontSize: 13,
+        color: theme.primary,
+        fontWeight: '500',
     },
     chipsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        paddingHorizontal: 16,
-        gap: 8,
+        paddingHorizontal: 20,
+        gap: 10,
     },
     chip: {
+        borderRadius: 18,
+        overflow: 'hidden',
+    },
+    chipBlur: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        gap: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: isDark ? 'rgba(184,159,204,0.15)' : 'rgba(212,184,224,0.25)',
+        borderRadius: 18,
     },
     chipText: {
         fontSize: 14,
+        color: theme.text,
     },
     startSearchContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    emptyContainer: {
-        flex: 1,
+    searchIconCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: theme.primary + '15',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 40,
+        marginBottom: 20,
+    },
+    emptyContainer: {
+        flex: 1,
+        paddingTop: 40,
+    },
+    emptyIconCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: theme.textMuted + '15',
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'center',
+        marginTop: 60,
+        marginBottom: 20,
     },
     emptyTitle: {
         fontSize: 20,
-        fontWeight: '700',
-        marginTop: 20,
-        marginBottom: 8,
+        fontWeight: '300',
+        color: theme.text,
+        textAlign: 'center',
+        letterSpacing: 0.3,
     },
     emptyText: {
         fontSize: 14,
+        color: theme.textMuted,
         textAlign: 'center',
+        marginTop: 8,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    loadingGlow: {
+        position: 'absolute',
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: theme.primary + '20',
+    },
     loadingText: {
-        marginTop: 12,
+        marginTop: 16,
         fontSize: 14,
+        color: theme.textMuted,
+        letterSpacing: 0.5,
     },
     listContent: {
-        paddingBottom: 20,
-        paddingTop: 12,
+        paddingBottom: 24,
+        paddingTop: 16,
     },
     row: {
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        marginBottom: 8,
+        paddingHorizontal: 20,
+        marginBottom: 12,
     },
     gridItem: {
-        width: (width - 48) / 2,
+        width: (width - 52) / 2,
     },
 });

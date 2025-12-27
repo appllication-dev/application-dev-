@@ -20,6 +20,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Services & Context
 import api from '../services/api';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { useCartAnimation } from '../context/CartAnimationContext';
 import { useFavorites } from '../context/FavoritesContext';
@@ -80,18 +81,41 @@ export default function ProductsScreen() {
     const fetchCategories = async () => {
         try {
             const data = await api.getCategories();
-            setCategories(data?.filter(cat => cat.count > 0) || []);
+            const filtered = data?.filter(cat => cat.count > 0) || [];
+
+            // Priority keywords for categories with custom icons
+            const priorityKeywords = [
+                'skincare', 'العناية بالبشرة', 'acne', 'حب الشباب', 'makeup', 'المكياج',
+                'hair', 'الشعر', 'body', 'الجسم', 'serum', 'السيروم', 'sun', 'شمس',
+                'set', 'مجموعات', 'nail', 'أظافر', 'cleanser', 'منظفات', 'mask',
+                'ماسك', 'cream', 'moist', 'مرطب', 'eye', 'عين', 'lip', 'شفاه',
+                'toner', 'تونر', 'aging', 'تجاعيد'
+            ];
+
+            // Sort: Priority items first
+            const sorted = filtered.sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                const isAPriority = priorityKeywords.some(key => nameA.includes(key));
+                const isBPriority = priorityKeywords.some(key => nameB.includes(key));
+
+                if (isAPriority && !isBPriority) return -1;
+                if (!isAPriority && isBPriority) return 1;
+                return 0;
+            });
+
+            setCategories(sorted);
         } catch (error) {
             console.error('Error fetching categories:', error);
         }
     };
 
-    const handleRefresh = async () => {
+    const handleRefresh = React.useCallback(async () => {
         setRefreshing(true);
         setPage(1);
         await fetchProducts(1, selectedCategory);
         setRefreshing(false);
-    };
+    }, [selectedCategory]);
 
     const handleLoadMore = () => {
         if (hasMore && !loading) {
@@ -101,14 +125,14 @@ export default function ProductsScreen() {
         }
     };
 
-    const handleCategorySelect = async (categoryId) => {
+    const handleCategorySelect = React.useCallback(async (categoryId) => {
         const newCategory = categoryId === selectedCategory ? null : categoryId;
         setSelectedCategory(newCategory);
         setPage(1);
         setLoading(true);
         await fetchProducts(1, newCategory);
         setLoading(false);
-    };
+    }, [selectedCategory]);
 
     const handleSearch = (query) => {
         if (query.trim()) {
@@ -120,11 +144,11 @@ export default function ProductsScreen() {
         }
     };
 
-    const handleProductPress = (item) => {
+    const handleProductPress = React.useCallback((item) => {
         router.push(`/product/${item.id}`);
-    };
+    }, [router]);
 
-    const handleAddToCart = (item) => {
+    const handleAddToCart = React.useCallback((item) => {
         triggerAddToCart({
             id: item.id,
             name: item.name,
@@ -132,16 +156,16 @@ export default function ProductsScreen() {
             image: item.images?.[0]?.src,
             quantity: 1,
         });
-    };
+    }, [triggerAddToCart]);
 
-    const handleFavorite = (item) => {
+    const handleFavorite = React.useCallback((item) => {
         toggleFavorite({
             id: item.id,
             name: item.name,
             price: item.price,
             image: item.images?.[0]?.src,
         });
-    };
+    }, [toggleFavorite]);
 
     // Group products by category for brand view
     const getProductsByCategory = () => {
@@ -158,67 +182,117 @@ export default function ProductsScreen() {
     };
 
     // Render product for grid view
-    const renderProduct = ({ item }) => (
+    // Render product for grid view
+    const renderProduct = React.useCallback(({ item }) => (
         <View style={styles.gridItem}>
             <ProductCardSoko
                 item={item}
-                onPress={() => handleProductPress(item)}
+                onPress={handleProductPress}
                 onAddToCart={handleAddToCart}
                 onFavorite={handleFavorite}
                 isFavorite={isFavorite(item.id)}
             />
         </View>
-    );
+    ), [handleProductPress, handleAddToCart, handleFavorite, isFavorite, styles.gridItem]);
 
-    // Category Mapping Helper - Enhanced with more icons and better labels
+    // Category Mapping Helper - Enhanced with premium beauty icons
     const getCategoryDetails = (catName) => {
         const lowerName = catName?.toLowerCase() || '';
 
-        // Comprehensive Mapping for Skincare/Beauty Categories
-        if (lowerName.includes('acne')) return { label: t('acne'), icon: 'bandage-outline' };
-        if (lowerName.includes('makeup')) return { label: t('makeup'), icon: 'brush-outline' };
-        if (lowerName.includes('hair')) return { label: t('hair'), icon: 'cut-outline' };
-        if (lowerName.includes('body')) return { label: t('body'), icon: 'body-outline' };
-        if (lowerName.includes('serum')) return { label: t('serum'), icon: 'water-outline' };
-        if (lowerName.includes('sun')) return { label: t('suncare'), icon: 'sunny-outline' };
-        if (lowerName.includes('set')) return { label: t('sets'), icon: 'gift-outline' };
-        if (lowerName.includes('anti-aging') || lowerName.includes('aging')) return { label: t('antiAging'), icon: 'hourglass-outline' };
-        if (lowerName.includes('uncategorized')) return { label: t('uncategorized'), icon: 'help-circle-outline' };
+        // Skincare & Basics
+        if (lowerName.includes('skincare') || lowerName.includes('العناية بالبشرة'))
+            return { label: t('skincare') || 'Skincare', icon: 'face-woman-outline', provider: MaterialCommunityIcons };
 
-        // Dynamic additions for common beauty keywords
-        if (lowerName.includes('cleanser')) return { label: t('cleansers'), icon: 'sparkles-outline' };
-        if (lowerName.includes('mask')) return { label: t('masks'), icon: 'happy-outline' };
-        if (lowerName.includes('cream') || lowerName.includes('moist')) return { label: t('moisturizers'), icon: 'flask-outline' };
-        if (lowerName.includes('eye')) return { label: t('eyeCare'), icon: 'eye-outline' };
-        if (lowerName.includes('lip')) return { label: t('lipCare'), icon: 'heart-outline' };
-        if (lowerName.includes('toner')) return { label: t('toners'), icon: 'color-filter-outline' };
-        if (lowerName.includes('exfoliat')) return { label: t('exfoliators'), icon: 'infinite-outline' };
+        // Acne
+        if (lowerName.includes('acne') || lowerName.includes('حب الشباب'))
+            return { label: t('acne'), icon: 'bandage-outline', provider: Ionicons };
 
-        return { label: catName, icon: 'grid-outline' };
+        // Makeup
+        if (lowerName.includes('makeup') || lowerName.includes('المكياج'))
+            return { label: t('makeup'), icon: 'eye-outline', provider: Ionicons };
+
+        // Hair
+        if (lowerName.includes('hair') || lowerName.includes('الشعر'))
+            return { label: t('hair'), icon: 'hair-dryer-outline', provider: MaterialCommunityIcons };
+
+        // Body
+        if (lowerName.includes('body') || lowerName.includes('الجسم'))
+            return { label: t('body'), icon: 'emoticon-sparkles-outline', provider: MaterialCommunityIcons };
+
+        // Serum
+        if (lowerName.includes('serum') || lowerName.includes('السيروم'))
+            return { label: t('serum'), icon: 'water-outline', provider: Ionicons };
+
+        // Sun Care
+        if (lowerName.includes('sun') || lowerName.includes('شمس'))
+            return { label: t('suncare'), icon: 'sunny-outline', provider: Ionicons };
+
+        // Value Sets
+        if (lowerName.includes('set') || lowerName.includes('مجموعات'))
+            return { label: t('sets'), icon: 'gift-outline', provider: Ionicons };
+
+        // Nails
+        if (lowerName.includes('nail') || lowerName.includes('أظافر'))
+            return { label: t('nail') || 'Nail', icon: 'bottle-tonic-plus-outline', provider: MaterialCommunityIcons };
+
+        // Cleansers
+        if (lowerName.includes('cleanser') || lowerName.includes('منظفات'))
+            return { label: t('cleansers'), icon: 'shimmer', provider: MaterialCommunityIcons };
+
+        // Masks
+        if (lowerName.includes('mask') || lowerName.includes('ماسك'))
+            return { label: t('masks'), icon: 'face-mask-outline', provider: MaterialCommunityIcons };
+
+        // Creams & Moisturizers
+        if (lowerName.includes('cream') || lowerName.includes('moist') || lowerName.includes('مرطب'))
+            return { label: t('moisturizers'), icon: 'cream', provider: MaterialCommunityIcons };
+
+        // Eye Care
+        if (lowerName.includes('eye') || lowerName.includes('عين'))
+            return { label: t('eyeCare'), icon: 'eye-circle-outline', provider: MaterialCommunityIcons };
+
+        // Lip Care
+        if (lowerName.includes('lip') || lowerName.includes('شفاه'))
+            return { label: t('lipCare'), icon: 'lipstick', provider: MaterialCommunityIcons };
+
+        // Toner
+        if (lowerName.includes('toner') || lowerName.includes('تونر'))
+            return { label: t('toners'), icon: 'bottle-wine-outline', provider: MaterialCommunityIcons };
+
+        // Anti-Aging
+        if (lowerName.includes('aging') || lowerName.includes('تجاعيد'))
+            return { label: t('antiAging'), icon: 'auto-fix', provider: MaterialCommunityIcons };
+
+        return { label: catName, icon: 'dots-grid', provider: MaterialCommunityIcons };
     };
 
     // Render category chip
     const renderCategory = ({ item }) => {
         const isAll = item.id === null;
-        const details = isAll ? { label: t('all'), icon: 'apps-outline' } : getCategoryDetails(item.name);
+        const details = isAll ? { label: t('all'), icon: 'apps-outline', provider: Ionicons } : getCategoryDetails(item.name);
+        const IconProvider = details.provider || Ionicons;
 
         return (
             <TouchableOpacity
-                style={[
-                    styles.categoryChip,
-                    selectedCategory === item.id && styles.categoryChipActive,
-                ]}
+                style={styles.categoryCircleWrapper}
                 onPress={() => handleCategorySelect(item.id)}
             >
-                <Ionicons
-                    name={details.icon}
-                    size={16}
-                    color={selectedCategory === item.id ? '#fff' : theme.textSecondary}
-                    style={{ marginRight: 6 }}
-                />
+                <View
+                    style={[
+                        styles.categoryCircle,
+                        selectedCategory === item.id && styles.categoryCircleActive,
+                    ]}
+                >
+                    <IconProvider
+                        name={details.icon}
+                        size={22}
+                        color={selectedCategory === item.id ? '#fff' : (isDark ? theme.primary : '#1A1A1A')}
+                    />
+                </View>
                 <Text style={[
-                    styles.categoryChipText,
-                    selectedCategory === item.id && styles.categoryChipTextActive,
+                    styles.categoryCircleLabel,
+                    { color: selectedCategory === item.id ? theme.primary : theme.textSecondary },
+                    selectedCategory === item.id && { fontWeight: '700' }
                 ]}>
                     {details.label}
                 </Text>
@@ -371,30 +445,41 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     },
     categoriesList: {
         paddingHorizontal: 16,
-        gap: 8,
+        paddingBottom: 10,
     },
-    categoryChip: {
-        flexDirection: 'row',
+    categoryCircleWrapper: {
         alignItems: 'center',
-        backgroundColor: theme.backgroundCard,
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 24,
+        marginRight: 18,
+        width: 60,
+    },
+    categoryCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
         borderWidth: 1,
         borderColor: theme.border,
-        marginRight: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    categoryChipActive: {
+    categoryCircleActive: {
         backgroundColor: theme.primary,
         borderColor: theme.primary,
+        shadowColor: theme.primary,
+        shadowOpacity: 0.3,
     },
-    categoryChipText: {
-        fontSize: 13,
-        color: theme.textSecondary,
+    categoryCircleLabel: {
+        marginTop: 6,
+        fontSize: 10,
+        textAlign: 'center',
         fontWeight: '500',
-    },
-    categoryChipTextActive: {
-        color: '#fff',
+        textTransform: 'uppercase',
+        letterSpacing: 0.2,
     },
     filterRow: {
         flexDirection: 'row',
@@ -405,7 +490,7 @@ const getStyles = (theme, isDark) => StyleSheet.create({
     },
     viewModeToggle: {
         flexDirection: 'row',
-        backgroundColor: theme.backgroundCard,
+        backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : 'rgba(255,255,255,0.8)',
         borderRadius: 8,
         padding: 2,
         borderWidth: 1,
