@@ -1,69 +1,53 @@
 {
   "expo": {
-    "name": "Funny Shop",
-    "slug": "funny-shop",
-    "owner": "m_mohamed_10_1",
+    "name": "Kataraa",
+    "slug": "kataraa-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "funnyshop",
+    "icon": "./assets/images/icon_final.png",
+    "scheme": "kataraa",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash_final.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.funnyshop.app",
+      "bundleIdentifier": "com.kataraa.app",
       "infoPlist": {
-        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice search."
+        "NSSpeechRecognitionUsageDescription": "السماح للتطبيق بالتعرف على الكلام",
+        "NSMicrophoneUsageDescription": "السماح للتطبيق باستخدام الميكروفون للبحث الصوتي"
       }
     },
     "android": {
-      "package": "com.funnyshop.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0f1720",
-        "foregroundImage": "./assets/images/adaptive-icon.png"
+        "foregroundImage": "./assets/images/icon_final.png",
+        "backgroundColor": "#667eea"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "googleServicesFile": "./google-services.json",
+      "package": "com.kataraa.app",
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]
     },
-    "updates": {
-      "enabled": false,
-      "checkAutomatically": "ON_ERROR_RECOVERY",
-      "fallbackToCacheTimeout": 0,
-      "url": ""
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/icon.png"
-    },
     "plugins": [
       "expo-router",
-      "expo-web-browser",
-      "expo-secure-store",
       [
         "@jamsch/expo-speech-recognition",
         {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice search."
+          "speechRecognitionPermission": "نحتاج إلى إذن للتعرف على الكلام لتمكين البحث الصوتي.",
+          "microphonePermission": "نحتاج إلى إذن للوصول إلى الميكروفون لتمكين البحث الصوتي."
         }
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "ff016a0f-1786-4460-b15b-5256b154f213"
+        "projectId": "c95b01ab-9fc0-45ed-bf61-aa6b8948c6df"
       }
     }
   }

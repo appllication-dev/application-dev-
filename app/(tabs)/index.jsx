@@ -1,600 +1,879 @@
-import { Text, View, FlatList, TouchableOpacity, StyleSheet, Modal, Dimensions, Platform, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import { Feather } from '@expo/vector-icons';
-import Category from "../components/category";
-import ProductCard from "../components/productCard";
-import NoResults from "../components/NoResults";
-import { useState, useMemo, useEffect, useCallback } from "react";
-import data from "../data/data";
-import { useTheme } from "../../src/context/ThemeContext";
-import { useFavorites } from "../../src/context/FavoritesContext";
-import { useAuth } from "../../src/context/AuthContext";
-import { storage } from "../../src/utils/storage";
-import { sanitizeEmail } from "../../src/utils/helpers";
+/**
+ * 🔥 LEGENDARY HOME SCREEN - Kataraa
+ * Cinematic, Dramatic, Epic Design
+ * 
+ * الهدف: العميلة تبقى بزااااف وتشوف منتجات بزااااف
+ */
 
-import { BorderRadius, Spacing, FontSize } from "../../constants/theme";
-import PremiumBackground from "../components/PremiumBackground";
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  Dimensions,
+  Animated,
+  ImageBackground,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import ProductSkeleton from "../components/ProductSkeleton";
-import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { getProducts as fetchProducts } from "../../src/services/firestoreProducts";
-import SearchBar from "../components/SearchBar";
-import SearchFilterModal from "../components/SearchFilterModal";
-import { useTranslation } from "../../src/hooks/useTranslation";
-import CoolLoader from "../components/CoolLoader";
-import { useQuery } from '@tanstack/react-query';
-import { RevolutionTheme } from "../../src/theme/RevolutionTheme";
-// VoiceSearchModal removed
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 
-const { width } = Dimensions.get('window');
+// Services & Context
+import api from '../services/api';
+import { useCart } from '../context/CartContext';
+import { useCartAnimation } from '../context/CartAnimationContext';
+import { useFavorites } from '../context/FavoritesContext';
+import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 
-const MyScreen = () => {
-    const { colors, theme } = useTheme();
-    const { toggleFavorite } = useFavorites();
-    const { user } = useAuth();
-    const router = useRouter();
-    const { t } = useTranslation();
-    const isDark = theme === 'dark';
+// Components
+import SearchHeader from '../components/SearchHeader';
+import ProductCardSwipeable from '../components/ProductCardSwipeable';
+import DrawerMenu from '../components/DrawerMenu';
+import VoiceSearchButton from '../components/VoiceSearchButton';
 
-    const categories = [
-        { id: 'all', label: t('all'), icon: 'border-all' },
-        { id: 'Discount', label: t('discount'), icon: 'percentage' },
-        { id: 'T-shirt', label: t('tshirt'), icon: 'tshirt' },
-        { id: 'Hoodie', label: t('hoodie'), icon: 'user-astronaut' },
-        { id: 'Hat', label: t('hat'), icon: 'hard-hat' }
-    ];
-    const popularSearches = [t('tshirt'), "أحذية", t('hoodie'), "ساعات", "حقائب", "جاكيت"];
+// Theme
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../theme/colors';
 
-    const [selectedCategory, setSelectedCategory] = useState('all');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showSearchModal, setShowSearchModal] = useState(false);
-    const [showFilterModal, setShowFilterModal] = useState(false);
-    const [filterParams, setFilterParams] = useState({});
-    // const [showVoiceModal, setShowVoiceModal] = useState(false); // Removed
-    const [profileImage, setProfileImage] = useState(null);
+const { width, height } = Dimensions.get('window');
 
-    // Dynamic Theme Colors
-    const themeBg = isDark ? RevolutionTheme.colors.background : RevolutionTheme.colors.backgroundLight;
-    const themeText = isDark ? RevolutionTheme.colors.text.primary : RevolutionTheme.colors.creamText;
-    const themeTextSecondary = isDark ? RevolutionTheme.colors.text.secondary : RevolutionTheme.colors.creamTextSecondary;
-    const themeCard = isDark ? RevolutionTheme.colors.card : RevolutionTheme.colors.creamCard;
-    const themeBorder = isDark ? 'rgba(255,255,255,0.05)' : RevolutionTheme.colors.glassBorderLight;
-    const themeIconBg = isDark ? RevolutionTheme.colors.glass : 'rgba(212, 175, 55, 0.08)';
+// ============================================
+// 🎬 CINEMATIC HERO SECTION
+// ============================================
+const CinematicHero = ({ onShopNow, theme, styles, t }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
-    // Load Profile Image
-    useFocusEffect(
-        useCallback(() => {
-            const loadProfileImage = async () => {
-                if (user) {
-                    try {
-                        const userImageKey = `profile_image_${sanitizeEmail(user.email)}`;
-                        const savedUri = await storage.getItem(userImageKey);
-                        if (savedUri) {
-                            setProfileImage(savedUri);
-                        } else {
-                            setProfileImage(user.photoURL);
-                        }
-                    } catch (e) {
-                        console.log("Error loading header image", e);
-                    }
-                } else {
-                    setProfileImage(null);
-                }
-            };
-            loadProfileImage();
-        }, [user])
-    );
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
-    useFocusEffect(
-        useCallback(() => {
-            // ... existing code ...
-        }, [user])
-    );
+  return (
+    <View style={styles.heroContainer}>
+      <ImageBackground
+        source={require('../../assets/images/hero_premium.png')}
+        style={styles.heroVideo}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(0,0,0,0.1)', 'rgba(255,249,245,0.4)', 'rgba(255,249,245,0.95)']}
+          style={styles.heroOverlay}
+        />
+        <Animated.View
+          style={[
+            styles.heroContent,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          <Text style={styles.heroBadge}>✨ {t('heroSubtitle')}</Text>
+          <Text style={[styles.heroTitle, { color: '#3D2314' }]}>{t('heroTitle')}</Text>
+          <TouchableOpacity style={styles.heroButton} onPress={onShopNow}>
+            <LinearGradient
+              colors={['#F5B5C8', '#B76E79']}
+              style={styles.heroButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.heroButtonText}>{t('shopNow')}</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </ImageBackground>
+    </View>
+  );
+};
 
-    // Handle Voice Search Params
-    const { search } = useLocalSearchParams();
+// ============================================
+// 💎 SKIN TYPE SELECTOR
+// ============================================
+const SkinTypeSection = ({ onSelect, theme, styles, t }) => {
+  const skinTypes = [
+    { id: 'oily', name: t('oily'), icon: 'water', color: '#4FC3F7', emoji: '💧' },
+    { id: 'dry', name: t('dry'), icon: 'leaf', color: '#AED581', emoji: '🍃' },
+    { id: 'mixed', name: t('mixed'), icon: 'contrast', color: '#FFB74D', emoji: '⚖️' },
+    { id: 'sensitive', name: t('sensitive'), icon: 'flower', color: '#F48FB1', emoji: '🌸' },
+  ];
 
-    useEffect(() => {
-        if (search) {
-            setSearchQuery(search);
-            // Optionally open search modal if that's how search works, 
-            // but setting query might be enough if filtered list is shown inline
-            // Based on code, let's also ensure Category is All to search effectively
-            setSelectedCategory('all');
-        }
-    }, [search]);
+  return (
+    <View style={styles.skinTypeSection}>
+      <View style={styles.sectionHeader}>
+        <TouchableOpacity style={styles.viewAllBtn}>
+          <Text style={styles.viewAllText}>{t('viewAll')}</Text>
+          <Ionicons name="arrow-back" size={16} color={theme.primary} />
+        </TouchableOpacity>
+        <Text style={styles.sectionTitle}>{t('shopBySkin')} 💎</Text>
+      </View>
 
-    // Local data disabled - using Firestore for products added by user
-    // const products = data.products;
-    // const isLoading = false;
-    // const refetch = () => { };
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.skinTypeList}>
+        {skinTypes.map((type, index) => (
+          <TouchableOpacity
+            key={type.id}
+            style={[styles.skinTypeCard, { backgroundColor: type.color + '20' }]}
+            onPress={() => onSelect(type)}
+          >
+            <View style={[styles.skinTypeIcon, { backgroundColor: type.color }]}>
+              <Text style={styles.skinTypeEmoji}>{type.emoji}</Text>
+            </View>
+            <Text style={styles.skinTypeName}>{type.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
 
-    // Firestore fetch enabled - to get products added by user
-    const { data: products = [], isLoading, refetch } = useQuery({
-        queryKey: ['products', filterParams],
-        queryFn: async () => {
-            const result = await fetchProducts({ ...filterParams, limitCount: 50 });
-            if (result.success) {
-                return result.products;
-            }
-            throw new Error("Failed to fetch products");
-        },
-        staleTime: Infinity,
-        cacheTime: 1000 * 60 * 60 * 24,
+// ============================================
+// 🎯 EPIC SECTION HEADER
+// ============================================
+const EpicSectionHeader = ({ title, subtitle, emoji, onViewAll, color, theme, styles, t }) => (
+  <View style={styles.epicHeader}>
+    <TouchableOpacity style={styles.viewAllBtn} onPress={onViewAll}>
+      <Text style={styles.viewAllText}>{t('viewAll')}</Text>
+      <Ionicons name="arrow-back" size={16} color={theme.primary} />
+    </TouchableOpacity>
+    <View style={styles.epicTitleContainer}>
+      <Text style={styles.epicEmoji}>{emoji}</Text>
+      <View>
+        <Text style={[styles.epicTitle, color && { color }]}>{title}</Text>
+        {subtitle && <Text style={styles.epicSubtitle}>{subtitle}</Text>}
+      </View>
+    </View>
+  </View>
+);
+
+// ============================================
+// 🔥 FLASH SALE BANNER
+// ============================================
+const FlashSaleBanner = ({ onPress, styles, t }) => (
+  <TouchableOpacity style={styles.flashBanner} onPress={onPress}>
+    <LinearGradient
+      colors={['#FF416C', '#FF4B2B']}
+      style={styles.flashGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+    >
+      <View style={styles.flashLeft}>
+        <Text style={styles.flashEmoji}>🔥</Text>
+        <View>
+          <Text style={styles.flashTitle}>{t('flashSale')}</Text>
+          <Text style={styles.flashSubtitle}>{t('flashSaleSubtitle')}</Text>
+        </View>
+      </View>
+      <View style={styles.flashTimer}>
+        <Text style={styles.flashTimerText}>{t('shopNow')} ←</Text>
+      </View>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
+// ============================================
+// 🛒 PRODUCT CAROUSEL (Horizontal)
+// ============================================
+const ProductCarousel = ({ products, onProductPress, onAddToCart, onFavorite, isFavorite, styles }) => (
+  <FlatList
+    data={products}
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={styles.carouselContainer}
+    keyExtractor={(item) => item.id.toString()}
+    renderItem={({ item }) => (
+      <ProductCardSwipeable
+        item={item}
+        onPress={() => onProductPress(item)}
+        onAddToCart={onAddToCart}
+        onFavorite={onFavorite}
+        isFavorite={isFavorite(item.id)}
+      />
+    )}
+  />
+);
+
+// ============================================
+// 📦 CATEGORY GRID
+// ============================================
+const CategoryGrid = ({ categories, onSelect, styles, t }) => {
+  const categoryData = [
+    { id: 'acne', name: t('acne'), icon: '🎯', color: '#E57373' },
+    { id: 'makeup', name: t('makeup'), icon: '💄', color: '#F48FB1' },
+    { id: 'hair', name: t('hair'), icon: '💇‍♀️', color: '#CE93D8' },
+    { id: 'body', name: t('body'), icon: '✨', color: '#90CAF9' },
+    { id: 'serum', name: t('serum'), icon: '💎', color: '#80DEEA' },
+    { id: 'suncare', name: t('suncare'), icon: '☀️', color: '#FFE082' },
+    { id: 'aging', name: t('antiAging'), icon: '⏳', color: '#90A4AE' },
+    { id: 'sets', name: t('sets'), icon: '🎁', color: '#FFD54F' },
+  ];
+
+  return (
+    <View style={styles.categorySection}>
+      <EpicSectionHeader
+        title={t('shopByCategory')}
+        emoji="🛍️"
+        onViewAll={() => { }}
+        styles={styles}
+        theme={{ primary: styles.viewAllText ? styles.viewAllText.color : '#667eea' }}
+        t={t}
+      />
+      <View style={styles.categoryGrid}>
+        {categoryData.map((cat) => (
+          <TouchableOpacity
+            key={cat.id}
+            style={styles.categoryCard}
+            onPress={() => onSelect(cat)}
+          >
+            <View style={[styles.categoryIcon, { backgroundColor: cat.color + '30' }]}>
+              <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+            </View>
+            <Text style={styles.categoryName}>{cat.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// ============================================
+// 🌟 WHY SHOP WITH US
+// ============================================
+const WhyShopWithUs = ({ theme, styles, t }) => {
+  const features = [
+    { icon: 'shield-checkmark', title: t('guaranteed'), desc: t('guaranteedDesc') },
+    { icon: 'cube', title: t('variety'), desc: t('varietyDesc') },
+    { icon: 'star', title: t('experience'), desc: t('experienceDesc') },
+    { icon: 'car', title: t('delivery'), desc: t('deliveryDesc') },
+  ];
+
+  return (
+    <View style={styles.whySection}>
+      <Text style={styles.whyTitle}>{t('whyShop')} 💜</Text>
+      <View style={styles.whyGrid}>
+        {features.map((f, i) => (
+          <View key={i} style={styles.whyCard}>
+            <View style={styles.whyIconContainer}>
+              <Ionicons name={f.icon} size={24} color={theme.primary} />
+            </View>
+            <Text style={styles.whyCardTitle}>{f.title}</Text>
+            <Text style={styles.whyCardDesc}>{f.desc}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// ============================================
+// 📱 MAIN HOME SCREEN
+// ============================================
+import { useTranslation } from '../hooks/useTranslation';
+
+// ============================================
+// 📱 MAIN HOME SCREEN
+// ============================================
+export default function HomeScreen() {
+  const router = useRouter();
+  const { cartItems } = useCart();
+  const { triggerAddToCart } = useCartAnimation();
+  const { toggleFavorite, isFavorite } = useFavorites();
+  const { theme, isDark } = useTheme();
+  const { t } = useTranslation();
+  const { addNotification, notifications } = useNotifications();
+
+  const styles = getStyles(theme, isDark);
+
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [productsData, categoriesData] = await Promise.all([
+        api.getProducts(1, 50), // More products!
+        api.getCategories(),
+      ]);
+      setProducts(productsData || []);
+      setCategories(categoriesData?.filter(cat => cat.count > 0) || []);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check for new arrivals notification
+  useEffect(() => {
+    if (!loading && products.length > 0) {
+      const lastArrivalCheck = notifications.find(n => n.type === 'arrival');
+      if (!lastArrivalCheck) {
+        addNotification(
+          'notifArrivalTitle',
+          'notifArrivalMsg',
+          'arrival'
+        );
+      }
+    }
+  }, [loading, products]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const handleSearch = (query) => {
+    if (query.trim()) {
+      router.push(`/products?search=${encodeURIComponent(query)}`);
+    }
+  };
+
+  const handleProductPress = (item) => {
+    router.push(`/product/${item.id}`);
+  };
+
+  const handleAddToCart = (item) => {
+    triggerAddToCart({
+      id: item.id,
+      name: item.name,
+      price: item.sale_price || item.price,
+      image: item.images?.[0]?.src,
+      quantity: 1,
     });
+  };
 
-    useFocusEffect(
-        useCallback(() => {
-            refetch();
-        }, [])
-    );
+  const handleFavorite = (item) => {
+    toggleFavorite({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.images?.[0]?.src,
+      quantity: 1,
+    });
+  };
 
-    const handleLike = (productId) => {
-        const product = products.find(p => p.id === productId);
-        if (product) {
-            toggleFavorite(product);
-        }
-    };
+  // Filter functions
+  const getSaleProducts = () => products.filter(p => p.on_sale).slice(0, 12);
+  const getNewArrivals = () => products.slice(0, 12);
+  const getFeaturedProducts = () => products.filter(p => p.featured).slice(0, 12);
+  const getPopularProducts = () => [...products].sort((a, b) => (b.total_sales || 0) - (a.total_sales || 0)).slice(0, 12);
 
-    const displayedProducts = useMemo(() => {
-        let filtered = [...products]; // Create a copy to avoid mutating original
-
-        // Search filter
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(product =>
-                product.title.toLowerCase().includes(query) ||
-                product.category.toLowerCase().includes(query)
-            );
-        }
-
-        // Category filter
-        if (selectedCategory !== 'all') {
-            filtered = filtered.filter(product => product.category === selectedCategory);
-        }
-
-        // Filter from modal
-        if (filterParams.category) {
-            filtered = filtered.filter(product => product.category === filterParams.category);
-        }
-
-        // Price range filter
-        if (filterParams.minPrice) {
-            filtered = filtered.filter(product => product.price >= filterParams.minPrice);
-        }
-        if (filterParams.maxPrice) {
-            filtered = filtered.filter(product => product.price <= filterParams.maxPrice);
-        }
-
-        // In stock filter
-        if (filterParams.onlyInStock) {
-            filtered = filtered.filter(product => product.stock > 0);
-        }
-
-        // Sorting
-        if (filterParams.sortBy === 'price_low') {
-            filtered.sort((a, b) => a.price - b.price);
-        } else if (filterParams.sortBy === 'price_high') {
-            filtered.sort((a, b) => b.price - a.price);
-        }
-        // 'newest' is default order from data, no sorting needed
-
-        return filtered;
-    }, [products, selectedCategory, searchQuery, filterParams]);
-
-    const handleSeeAll = () => {
-        setSearchQuery('');
-        setSelectedCategory('all');
-    };
-
-    // Sticky Header Component
-    const StickyHeader = () => (
-        <View style={[styles.headerContainer, { backgroundColor: isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255, 253, 245, 0.9)', borderBottomColor: themeBorder, borderBottomWidth: 1 }]}>
-            <View style={styles.headerRow}>
-                <TouchableOpacity
-                    style={[styles.iconButton, { backgroundColor: themeIconBg, borderColor: themeBorder }]}
-                    onPress={() => setShowSearchModal(true)}
-                >
-                    <Feather name="search" size={20} color={RevolutionTheme.colors.primary} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.iconButton, { backgroundColor: themeIconBg, borderColor: themeBorder, marginLeft: 8 }]}
-                    onPress={() => setShowFilterModal(true)}
-                >
-                    <Feather name="sliders" size={20} color={RevolutionTheme.colors.primary} />
-                </TouchableOpacity>
-
-                {/* Mic Button Removed */}
-
-                <View>
-                    <Text style={[styles.headerTitle, { color: RevolutionTheme.colors.primaryDark }]}>{t('shopName')}</Text>
-                </View>
-
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <TouchableOpacity
-                        style={[styles.iconButton, { backgroundColor: themeIconBg, borderColor: themeBorder }]}
-                        onPress={() => router.push("/screens/NotificationsScreen")}
-                    >
-                        <Feather name="bell" size={20} color={RevolutionTheme.colors.primary} />
-                        <View style={styles.notificationDot} />
-                    </TouchableOpacity>
-
-                    {user && (
-                        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-                            <Image
-                                source={profileImage ? { uri: profileImage } : { uri: "https://via.placeholder.com/150" }}
-                                style={styles.headerAvatar}
-                            />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </View>
-        </View>
-    );
-
-    const ListHeader = () => (
-        <>
-            {/* Luxury Banner */}
-            <View style={[styles.bannerWrapper, { backgroundColor: themeCard, borderColor: themeBorder, borderWidth: 1, marginTop: 10 }]}>
-                <LinearGradient
-                    colors={isDark ? ['#1A1A1A', '#000'] : ['#FFF8E7', '#FFFDF5']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
-                />
-                <View style={styles.bannerContainer}>
-                    <View style={styles.bannerLeft}>
-                        <View style={[styles.bannerBadge, { backgroundColor: RevolutionTheme.colors.primaryDark }]}>
-                            <Text style={styles.bannerBadgeText}>{t('onAnyAmount')}</Text>
-                        </View>
-                        <Text style={[styles.bannerDiscount, { color: RevolutionTheme.colors.primary }]}>50 %</Text>
-                        <Text style={[styles.bannerOffText, { color: themeTextSecondary }]}>{t('off')}</Text>
-                    </View>
-                    <View style={styles.bannerRight}>
-                        <Text style={styles.bannerEmoji}>🧥</Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* Categories */}
-            <View style={styles.categoriesContainer}>
-                <FlatList
-                    data={categories}
-                    renderItem={({ item }) => (
-                        <Category
-                            item={item}
-                            selectedCategory={selectedCategory}
-                            setSelectedCategory={setSelectedCategory}
-                        />
-                    )}
-                    keyExtractor={(item) => item.id}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                />
-            </View>
-
-            <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: themeText }]}>{t('newArrival')}</Text>
-                <TouchableOpacity onPress={handleSeeAll}>
-                    <Text style={[styles.viewAll, { color: RevolutionTheme.colors.primary }]}>{t('seeAll')}</Text>
-                </TouchableOpacity>
-            </View>
-        </>
-    );
-
+  if (loading) {
     return (
-        <View style={{ flex: 1, backgroundColor: themeBg }}>
-            {/* Background Gradient for Cream Mode */}
-            {!isDark && (
-                <LinearGradient
-                    colors={RevolutionTheme.colors.gradient.cream}
-                    style={StyleSheet.absoluteFill}
-                />
-            )}
-            {/* Background for Dark Mode */}
-            {isDark && (
-                <PremiumBackground style={StyleSheet.absoluteFill} />
-            )}
-
-            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-                <StickyHeader />
-
-                {/* VoiceSearchModal Removed */}
-
-                {/* Search Modal */}
-                <Modal
-                    visible={showSearchModal}
-                    animationType="fade"
-                    transparent={true}
-                    onRequestClose={() => setShowSearchModal(false)}
-                >
-                    <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.95)' : 'rgba(255, 253, 245, 0.98)' }]}>
-                        <SafeAreaView style={{ flex: 1 }}>
-                            {/* Modal Header */}
-                            <View style={[styles.searchHeader, { borderBottomColor: themeBorder }]}>
-                                <View style={{ flex: 1 }}>
-                                    <SearchBar
-                                        value={searchQuery}
-                                        onChangeText={setSearchQuery}
-                                        placeholder={t('searchProducts')}
-                                        autoFocus={true}
-                                    />
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.closeButton}
-                                    onPress={() => setShowSearchModal(false)}
-                                >
-                                    <Text style={[styles.closeButtonText, { color: themeText }]}>{t('cancel')}</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Search Content */}
-                            {searchQuery.trim() === '' ? (
-                                <View style={styles.popularSearchContainer}>
-                                    <Text style={[styles.popularTitle, { color: RevolutionTheme.colors.primary }]}>{t('popularSearches')}</Text>
-                                    <View style={styles.tagsContainer}>
-                                        {popularSearches.map((tag, index) => (
-                                            <TouchableOpacity
-                                                key={index}
-                                                style={[styles.tag, { backgroundColor: themeCard, borderColor: themeBorder }]}
-                                                onPress={() => setSearchQuery(tag)}
-                                            >
-                                                <Text style={[styles.tagText, { color: themeText }]}>{tag}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-                            ) : (
-                                <>
-                                    <View style={[styles.resultsHeader, { borderBottomColor: themeBorder }]}>
-                                        <Text style={[styles.resultsCount, { color: themeTextSecondary }]}>
-                                            {t('foundResults', { count: displayedProducts.length })}
-                                        </Text>
-                                    </View>
-                                    <FlatList
-                                        data={displayedProducts}
-                                        numColumns={2}
-                                        keyExtractor={(item) => item.id.toString()}
-                                        contentContainerStyle={styles.searchResults}
-                                        columnWrapperStyle={displayedProducts.length > 0 ? styles.columnWrapper : null}
-                                        renderItem={({ item }) => (
-                                            <View style={{ width: '48%' }}>
-                                                <ProductCard
-                                                    item={item}
-                                                    isLiked={item.isLiked}
-                                                    onLike={handleLike}
-                                                />
-                                            </View>
-                                        )}
-                                        ListEmptyComponent={<NoResults searchQuery={searchQuery} />}
-                                    />
-                                </>
-                            )}
-                        </SafeAreaView>
-                    </View>
-                </Modal>
-
-                <SearchFilterModal
-                    visible={showFilterModal}
-                    onClose={() => setShowFilterModal(false)}
-                    onApply={setFilterParams}
-                    initialFilters={filterParams}
-                />
-
-                {isLoading ? (
-                    <View style={{ paddingHorizontal: 16, paddingTop: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <ProductSkeleton key={i} />
-                        ))}
-                    </View>
-                ) : (
-                    <FlatList
-                        data={displayedProducts}
-                        numColumns={2}
-                        keyExtractor={(item) => item.id.toString()}
-                        contentContainerStyle={styles.listContent}
-                        columnWrapperStyle={displayedProducts.length > 0 ? styles.columnWrapper : null}
-                        showsVerticalScrollIndicator={false}
-                        ListHeaderComponent={<ListHeader />}
-                        renderItem={({ item, index }) => (
-                            <Animated.View
-                                entering={FadeInDown.delay(index * 100).springify()}
-                                style={{ width: '48%' }} // Slightly less than 50% for gap
-                            >
-                                <ProductCard
-                                    item={item}
-                                    isLiked={item.isLiked}
-                                    onLike={handleLike}
-                                    index={index}
-                                />
-                            </Animated.View>
-                        )}
-                        ListEmptyComponent={<NoResults searchQuery={searchQuery} />}
-                    />
-                )}
-            </SafeAreaView>
-        </View>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>{t('loadingMagic')}</Text>
+      </View>
     );
+  }
+
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+
+      {/* Drawer Menu */}
+      <DrawerMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      {/* Header */}
+      <SearchHeader
+        title="KATARAA"
+        onSearch={handleSearch}
+        onCartPress={() => router.push('/cart')}
+        onNotificationPress={() => router.push('/notifications')}
+        onMenuPress={() => router.push('/profile')}
+        cartCount={cartItems.length}
+      />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
+        }
+      >
+        {/* 🎬 Cinematic Hero */}
+        <CinematicHero onShopNow={() => router.push('/products')} theme={theme} styles={styles} t={t} />
+
+        {/* 💎 Shop by Skin Type */}
+        <SkinTypeSection onSelect={(type) => router.push(`/products?skin=${type.id}`)} theme={theme} styles={styles} t={t} />
+
+        {/* 🔥 Flash Sale Banner */}
+        <FlashSaleBanner onPress={() => router.push('/products?sale=true')} styles={styles} t={t} />
+
+        {/* 🆕 New Arrivals */}
+        <View style={styles.section}>
+          <EpicSectionHeader
+            title={t('newArrivals')}
+            subtitle={t('newArrivalsSub')}
+            emoji="🆕"
+            onViewAll={() => router.push('/products')}
+            theme={theme}
+            styles={styles}
+            t={t}
+          />
+          <ProductCarousel
+            products={getNewArrivals()}
+            onProductPress={handleProductPress}
+            onAddToCart={handleAddToCart}
+            onFavorite={handleFavorite}
+            isFavorite={isFavorite}
+            styles={styles}
+          />
+        </View>
+
+        {/* 🔥 On Sale */}
+        <View style={styles.section}>
+          <EpicSectionHeader
+            title={t('onSale')}
+            subtitle={t('onSaleSub')}
+            emoji="🔥"
+            color="#FF416C"
+            onViewAll={() => router.push('/products?sale=true')}
+            theme={theme}
+            styles={styles}
+            t={t}
+          />
+          <ProductCarousel
+            products={getSaleProducts()}
+            onProductPress={handleProductPress}
+            onAddToCart={handleAddToCart}
+            onFavorite={handleFavorite}
+            isFavorite={isFavorite}
+            styles={styles}
+          />
+        </View>
+
+        {/* 📦 Shop by Category */}
+        <CategoryGrid
+          categories={categories}
+          onSelect={(cat) => router.push(`/products?category=${cat.id}`)}
+          styles={styles}
+          t={t}
+        />
+
+        {/* ⭐ Popular Products */}
+        <View style={styles.section}>
+          <EpicSectionHeader
+            title={t('bestSellers')}
+            subtitle={t('bestSellersSub')}
+            emoji="⭐"
+            color="#FFB300"
+            onViewAll={() => router.push('/products')}
+            theme={theme}
+            styles={styles}
+            t={t}
+          />
+          <ProductCarousel
+            products={getPopularProducts()}
+            onProductPress={handleProductPress}
+            onAddToCart={handleAddToCart}
+            onFavorite={handleFavorite}
+            isFavorite={isFavorite}
+            styles={styles}
+          />
+        </View>
+
+        {/* 🌟 Why Shop With Us */}
+        <WhyShopWithUs theme={theme} styles={styles} t={t} />
+
+        {/* 💜 More Products */}
+        <View style={styles.section}>
+          <EpicSectionHeader
+            title={t('discoverMore')}
+            subtitle={t('discoverMoreSub')}
+            emoji="💜"
+            onViewAll={() => router.push('/products')}
+            theme={theme}
+            styles={styles}
+            t={t}
+          />
+          <ProductCarousel
+            products={products.slice(12, 24)}
+            onProductPress={handleProductPress}
+            onAddToCart={handleAddToCart}
+            onFavorite={handleFavorite}
+            isFavorite={isFavorite}
+            styles={styles}
+          />
+        </View>
+
+        {/* Newsletter CTA */}
+        <View style={styles.newsletterSection}>
+          <LinearGradient
+            colors={[theme.primary, theme.primaryDark]}
+            style={styles.newsletterGradient}
+          >
+            <Text style={styles.newsletterEmoji}>💌</Text>
+            <Text style={styles.newsletterTitle}>{t('joinFamily')}</Text>
+            <Text style={styles.newsletterSubtitle}>{t('joinFamilySub')}</Text>
+            <TouchableOpacity style={styles.newsletterBtn}>
+              <Text style={styles.newsletterBtnText}>{t('subscribe')}</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+
+        {/* Footer Space */}
+        <View style={{ height: 120 }} />
+      </ScrollView>
+    </View>
+  );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    listContent: {
-        paddingHorizontal: 16,
-        paddingBottom: 100,
-        paddingTop: 10,
-    },
-    columnWrapper: {
-        justifyContent: 'space-between',
-        gap: 12, // Gap between columns
-    },
-    headerContainer: {
-        paddingHorizontal: 16,
-        paddingBottom: 15,
-        paddingTop: 10,
-        zIndex: 100,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        letterSpacing: 2,
-        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    },
-    iconButton: {
-        width: 42,
-        height: 42,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 21,
-        borderWidth: 1,
-    },
-    headerAvatar: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        borderWidth: 2,
-        borderColor: '#D4AF37',
-    },
-    notificationDot: {
-        position: 'absolute',
-        top: 8,
-        right: 10,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#D4AF37',
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-    },
-    bannerWrapper: {
-        marginBottom: 24,
-        borderRadius: 24,
-        overflow: 'hidden',
-    },
-    bannerContainer: {
-        flexDirection: 'row',
-        padding: 24,
-        alignItems: 'center',
-    },
-    bannerLeft: {
-        flex: 1,
-    },
-    bannerBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-        alignSelf: 'flex-start',
-        marginBottom: 12,
-    },
-    bannerBadgeText: {
-        color: '#000',
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 1,
-    },
-    bannerDiscount: {
-        fontSize: 56,
-        fontWeight: '900',
-        lineHeight: 56,
-    },
-    bannerOffText: {
-        fontSize: 18,
-        fontWeight: '500',
-        marginBottom: 16,
-        letterSpacing: 3,
-        textTransform: 'uppercase',
-    },
-    bannerRight: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    bannerEmoji: {
-        fontSize: 80,
-    },
-    categoriesContainer: {
-        marginBottom: 24,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        marginTop: 10,
-    },
-    sectionTitle: {
-        fontSize: 22,
-        fontWeight: '800',
-        letterSpacing: 0.5,
-    },
-    viewAll: {
-        fontSize: 14,
-        fontWeight: '700',
-        letterSpacing: 1,
-    },
-    modalOverlay: {
-        flex: 1,
-    },
-    searchHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 12,
-        borderBottomWidth: 1,
-    },
-    closeButton: {
-        padding: 8,
-    },
-    closeButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    popularSearchContainer: {
-        padding: 24,
-    },
-    popularTitle: {
-        fontSize: 12,
-        fontWeight: '800',
-        marginBottom: 20,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-    },
-    tagsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    tag: {
-        paddingHorizontal: 18,
-        paddingVertical: 12,
-        borderRadius: 20,
-        borderWidth: 1,
-    },
-    tagText: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    resultsHeader: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-    },
-    resultsCount: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    searchResults: {
-        padding: 16,
-    },
+// ============================================
+// 🎨 STYLES
+// ============================================
+
+// Static styles for invariant elements (like hero text over video/images)
+const staticStyles = StyleSheet.create({
+  heroContainer: {
+    height: height * 0.45,
+    position: 'relative',
+  },
+  heroVideo: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+  },
+  heroBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    color: '#fff',
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#fff',
+    textAlign: 'center',
+    lineHeight: 40,
+  },
+  heroSubtitle: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 8,
+  },
+  heroButton: {
+    marginTop: 20,
+    borderRadius: 30,
+    overflow: 'hidden',
+  },
+  heroButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  heroButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
-export default MyScreen;
+const getStyles = (theme, isDark) => StyleSheet.create({
+  ...staticStyles, // Merge static styles
+  container: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    color: theme.primary,
+    fontSize: 16,
+  },
+
+  // Skin Type
+  skinTypeSection: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  skinTypeList: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  skinTypeCard: {
+    width: 100,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    marginRight: 12,
+  },
+  skinTypeIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  skinTypeEmoji: {
+    fontSize: 24,
+  },
+  skinTypeName: {
+    fontSize: 11,
+    color: theme.text,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.text,
+  },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
+    fontSize: 13,
+    color: theme.primary,
+  },
+
+  // Epic Header
+  epicHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  epicTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  epicEmoji: {
+    fontSize: 24,
+  },
+  epicTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.text, // Default color, can be overridden
+  },
+  epicSubtitle: {
+    fontSize: 12,
+    color: theme.textMuted,
+  },
+
+  // Flash Sale
+  flashBanner: {
+    marginHorizontal: 16,
+    marginVertical: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  flashGradient: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  flashLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  flashEmoji: {
+    fontSize: 32,
+  },
+  flashTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  flashSubtitle: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+  },
+  flashTimer: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  flashTimerText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Section
+  section: {
+    marginVertical: 8,
+  },
+  carouselContainer: {
+    paddingHorizontal: 16,
+  },
+
+  // Category Grid
+  categorySection: {
+    marginVertical: 16,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    justifyContent: 'space-between',
+  },
+  categoryCard: {
+    width: (width - 48) / 3,
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 12,
+  },
+  categoryIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryEmoji: {
+    fontSize: 28,
+  },
+  categoryName: {
+    fontSize: 12,
+    color: theme.text,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Why Shop
+  whySection: {
+    backgroundColor: theme.backgroundCard,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    padding: 20,
+    borderRadius: 20,
+    shadowColor: theme.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0.3 : 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  whyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.text,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  whyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  whyCard: {
+    width: '48%',
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 12,
+  },
+  whyIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  whyCardTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: theme.text,
+    marginBottom: 4,
+  },
+  whyCardDesc: {
+    fontSize: 11,
+    color: theme.textSecondary,
+  },
+
+  // Newsletter
+  newsletterSection: {
+    marginHorizontal: 16,
+    marginVertical: 24,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  newsletterGradient: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  newsletterEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  newsletterTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  newsletterSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  newsletterBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  newsletterBtnText: {
+    color: theme.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+});
