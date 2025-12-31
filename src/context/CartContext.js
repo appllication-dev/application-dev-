@@ -4,6 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
@@ -16,27 +17,48 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
+  const { user } = useAuth(); // Get current user
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadedUserEmail, setLoadedUserEmail] = useState(null);
 
-  // Load cart from storage
+  // Load cart when user changes
   useEffect(() => {
-    loadCart();
-  }, []);
+    if (user) {
+      loadCart();
+    } else {
+      setCartItems([]);
+      setLoadedUserEmail(null);
+      setLoading(false);
+    }
+  }, [user]);
 
   // Save cart to storage
   useEffect(() => {
-    if (!loading) {
-      AsyncStorage.setItem('@kataraa_cart', JSON.stringify(cartItems));
+    if (!loading && user?.email && user.email === loadedUserEmail) {
+      const handler = setTimeout(() => {
+        const key = `@kataraa_cart_${user.email.toLowerCase()}`;
+        AsyncStorage.setItem(key, JSON.stringify(cartItems));
+      }, 500);
+      return () => clearTimeout(handler);
     }
-  }, [cartItems, loading]);
+  }, [cartItems, loading, user, loadedUserEmail]);
 
   const loadCart = async () => {
+    if (!user?.email) return;
+
+    setLoading(true);
+    setCartItems([]); // Clear immediately
+
     try {
-      const saved = await AsyncStorage.getItem('@kataraa_cart');
+      const key = `@kataraa_cart_${user.email.toLowerCase()}`;
+      const saved = await AsyncStorage.getItem(key);
       if (saved) {
         setCartItems(JSON.parse(saved));
+      } else {
+        setCartItems([]);
       }
+      setLoadedUserEmail(user.email);
     } catch (error) {
       console.error('Error loading cart:', error);
     } finally {

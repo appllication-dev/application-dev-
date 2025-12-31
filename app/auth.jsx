@@ -9,33 +9,30 @@ import {
     KeyboardAvoidingView,
     Platform,
     Dimensions,
-    ActivityIndicator
+    ActivityIndicator,
+    Alert,
+    ImageBackground
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useTheme } from "./context/ThemeContext";
-import { useAuth } from "./context/AuthContext";
+import { useTheme } from '../src/context/ThemeContext';
+import { useAuth } from '../src/context/AuthContext';
 import { BlurView } from "expo-blur";
 import Animated, {
     FadeInDown,
     FadeInUp,
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-    withTiming,
-    Easing
 } from "react-native-reanimated";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
-import { useTranslation } from "./hooks/useTranslation";
+import { useTranslation } from "../src/hooks/useTranslation";
 
 export default function AuthScreen() {
     const router = useRouter();
     const { theme, isDark } = useTheme();
-    const { login, signup } = useAuth();
+    const { login, signup, signInWithGoogle } = useAuth();
     const { t } = useTranslation();
 
     const [isLogin, setIsLogin] = useState(true);
@@ -44,12 +41,12 @@ export default function AuthScreen() {
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [loading, setLoading] = useState(false);
-
-    // Focus states for glowing inputs
+    const [socialLoading, setSocialLoading] = useState(null);
     const [focusedField, setFocusedField] = useState(null);
 
     const handleSubmit = async () => {
         if (!email || !password || (!isLogin && (!name || !phone))) {
+            Alert.alert(t('error'), t('fillAllFields'));
             return;
         }
 
@@ -61,7 +58,7 @@ export default function AuthScreen() {
                 phone: phone,
                 photoURL: null,
                 id: Date.now().toString(),
-                uid: `local_${Date.now().toString()}`, // For Firebase compatibility
+                uid: `local_${Date.now().toString()}`,
             };
 
             if (isLogin) {
@@ -72,16 +69,36 @@ export default function AuthScreen() {
             router.back();
         } catch (e) {
             console.error(e);
+            Alert.alert(t('error'), t('errorOccurred'));
         } finally {
             setLoading(false);
         }
     };
 
+    const handleSocialLogin = async (provider) => {
+        setSocialLoading(provider);
+        try {
+            if (provider === 'Google') {
+                await signInWithGoogle();
+                router.replace('/');
+            }
+        } catch (error) {
+            console.error(`${provider} Login Error:`, error);
+            Alert.alert(t('error'), t('errorOccurred'));
+        } finally {
+            if (provider === 'Google') setSocialLoading(null);
+        }
+    };
+
     return (
         <View style={[styles.container, { backgroundColor: isDark ? "#0A0A12" : "#F8F8FF" }]}>
-            {/* Dynamic Background Glows */}
-            <View style={[styles.bgGlow1, { backgroundColor: theme.primary + "20" }]} />
-            <View style={[styles.bgGlow2, { backgroundColor: theme.accent + "15" }]} />
+            {/* Elegant Background Elements */}
+            <LinearGradient
+                colors={isDark ? [theme.primary + '15', 'transparent'] : [theme.primary + '10', 'transparent']}
+                style={styles.topGradient}
+            />
+            <View style={[styles.bgOrb1, { backgroundColor: theme.primary + "10" }]} />
+            <View style={[styles.bgOrb2, { backgroundColor: theme.accent + "08" }]} />
 
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
@@ -89,7 +106,7 @@ export default function AuthScreen() {
                         onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
                         style={styles.backBtn}
                     >
-                        <BlurView intensity={30} tint={isDark ? "dark" : "light"} style={styles.backBtnBlur}>
+                        <BlurView intensity={20} tint={isDark ? "dark" : "light"} style={styles.backBtnBlur}>
                             <Ionicons name="arrow-back" size={24} color={theme.text} />
                         </BlurView>
                     </TouchableOpacity>
@@ -97,145 +114,153 @@ export default function AuthScreen() {
 
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                        <Animated.View entering={FadeInDown.duration(800)} style={styles.logoSlot}>
-                            <LinearGradient colors={[theme.primary, theme.accent]} style={styles.logoCircle}>
-                                <Ionicons name="sparkles" size={40} color="#FFF" />
-                            </LinearGradient>
-                            <Text style={[styles.brandText, { color: theme.text }]}>KATARAA</Text>
-                            <Text style={[styles.tagline, { color: theme.textMuted }]}>
+
+                        {/* Brand Section */}
+                        <Animated.View entering={FadeInDown.duration(800)} style={styles.brandSection}>
+                            <Text style={[styles.welcomeText, { color: theme.textMuted }]}>
                                 {isLogin ? t('taglineLogin') : t('taglineRegister')}
                             </Text>
+                            <Text style={[styles.brandTitle, { color: theme.text }]}>
+                                {isLogin ? t('signIn') : t('createAccount')}
+                            </Text>
+                            <View style={[styles.titleUnderline, { backgroundColor: theme.primary }]} />
                         </Animated.View>
 
-                        <Animated.View entering={FadeInUp.delay(200).duration(800)} style={styles.formSlot}>
-                            <BlurView intensity={isDark ? 20 : 60} tint={isDark ? "dark" : "light"} style={styles.glassCard}>
-                                <Text style={[styles.formTitle, { color: theme.text }]}>
-                                    {isLogin ? t('signIn') : t('createAccount')}
-                                </Text>
+                        {/* Form Section */}
+                        <Animated.View entering={FadeInUp.delay(200).duration(800)} style={styles.formContainer}>
 
-                                {!isLogin && (
-                                    <View style={styles.inputBox}>
-                                        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('fullName')}</Text>
-                                        <View style={[styles.inputWrapper, focusedField === "name" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
-                                            <Ionicons name="person-outline" size={20} color={focusedField === "name" ? theme.primary : theme.textMuted} />
-                                            <TextInput
-                                                onFocus={() => setFocusedField("name")}
-                                                onBlur={() => setFocusedField(null)}
-                                                style={[styles.input, { color: theme.text }]}
-                                                placeholder={t('placeholderName')}
-                                                placeholderTextColor={theme.textMuted + "80"}
-                                                value={name}
-                                                onChangeText={setName}
-                                            />
-                                        </View>
-                                    </View>
-                                )}
-
-                                <View style={styles.inputBox}>
-                                    <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('email')}</Text>
-                                    <View style={[styles.inputWrapper, focusedField === "email" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
-                                        <Ionicons name="mail-outline" size={20} color={focusedField === "email" ? theme.primary : theme.textMuted} />
+                            {!isLogin && (
+                                <View style={styles.inputGroup}>
+                                    <View style={[styles.inputWrapper, focusedField === "name" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
+                                        <Ionicons name="person-outline" size={20} color={focusedField === "name" ? theme.primary : theme.textMuted} />
                                         <TextInput
-                                            onFocus={() => setFocusedField("email")}
+                                            onFocus={() => setFocusedField("name")}
                                             onBlur={() => setFocusedField(null)}
                                             style={[styles.input, { color: theme.text }]}
-                                            placeholder={t('placeholderEmail')}
-                                            placeholderTextColor={theme.textMuted + "80"}
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
+                                            placeholder={t('placeholderName')}
+                                            placeholderTextColor={theme.textMuted}
+                                            value={name}
+                                            onChangeText={setName}
                                         />
                                     </View>
                                 </View>
+                            )}
 
-                                {!isLogin && (
-                                    <View style={styles.inputBox}>
-                                        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('phone')}</Text>
-                                        <View style={[styles.inputWrapper, focusedField === "phone" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
-                                            <Ionicons name="call-outline" size={20} color={focusedField === "phone" ? theme.primary : theme.textMuted} />
-                                            <TextInput
-                                                onFocus={() => setFocusedField("phone")}
-                                                onBlur={() => setFocusedField(null)}
-                                                style={[styles.input, { color: theme.text }]}
-                                                placeholder={t('placeholderPhone')}
-                                                placeholderTextColor={theme.textMuted + "80"}
-                                                value={phone}
-                                                onChangeText={setPhone}
-                                                keyboardType="phone-pad"
-                                            />
-                                        </View>
-                                    </View>
-                                )}
+                            <View style={styles.inputGroup}>
+                                <View style={[styles.inputWrapper, focusedField === "email" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
+                                    <Ionicons name="mail-outline" size={20} color={focusedField === "email" ? theme.primary : theme.textMuted} />
+                                    <TextInput
+                                        onFocus={() => setFocusedField("email")}
+                                        onBlur={() => setFocusedField(null)}
+                                        style={[styles.input, { color: theme.text }]}
+                                        placeholder={t('placeholderEmail')}
+                                        placeholderTextColor={theme.textMuted}
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+                            </View>
 
-                                <View style={styles.inputBox}>
-                                    <Text style={[styles.inputLabel, { color: theme.textMuted }]}>{t('password')}</Text>
-                                    <View style={[styles.inputWrapper, focusedField === "pass" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
-                                        <Ionicons name="lock-closed-outline" size={20} color={focusedField === "pass" ? theme.primary : theme.textMuted} />
+                            {!isLogin && (
+                                <View style={styles.inputGroup}>
+                                    <View style={[styles.inputWrapper, focusedField === "phone" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
+                                        <Ionicons name="call-outline" size={20} color={focusedField === "phone" ? theme.primary : theme.textMuted} />
                                         <TextInput
-                                            onFocus={() => setFocusedField("pass")}
+                                            onFocus={() => setFocusedField("phone")}
                                             onBlur={() => setFocusedField(null)}
                                             style={[styles.input, { color: theme.text }]}
-                                            placeholder={t('placeholderPass')}
-                                            placeholderTextColor={theme.textMuted + "80"}
-                                            value={password}
-                                            onChangeText={setPassword}
-                                            secureTextEntry
+                                            placeholder={t('placeholderPhone')}
+                                            placeholderTextColor={theme.textMuted}
+                                            value={phone}
+                                            onChangeText={setPhone}
+                                            keyboardType="phone-pad"
                                         />
                                     </View>
                                 </View>
+                            )}
 
-                                {isLogin && (
-                                    <TouchableOpacity style={styles.forgotBtn} onPress={() => router.push('/forgot-password')}>
-                                        <Text style={[styles.forgotText, { color: theme.primary }]}>{t('forgotPassword')}</Text>
-                                    </TouchableOpacity>
-                                )}
+                            <View style={styles.inputGroup}>
+                                <View style={[styles.inputWrapper, focusedField === "pass" && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}>
+                                    <Ionicons name="lock-closed-outline" size={20} color={focusedField === "pass" ? theme.primary : theme.textMuted} />
+                                    <TextInput
+                                        onFocus={() => setFocusedField("pass")}
+                                        onBlur={() => setFocusedField(null)}
+                                        style={[styles.input, { color: theme.text }]}
+                                        placeholder={t('placeholderPass')}
+                                        placeholderTextColor={theme.textMuted}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        secureTextEntry
+                                    />
+                                </View>
+                            </View>
 
-                                <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
-                                    <LinearGradient
-                                        colors={[theme.primary, theme.primaryDark]}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                        style={styles.submitGradient}
-                                    >
-                                        {loading ? (
-                                            <ActivityIndicator color="#FFF" />
-                                        ) : (
-                                            <>
-                                                <Text style={styles.submitText}>{isLogin ? t('signIn') : t('createAccount')}</Text>
-                                                <Ionicons name="chevron-forward" size={20} color="#FFF" />
-                                            </>
-                                        )}
-                                    </LinearGradient>
+                            {isLogin && (
+                                <TouchableOpacity style={styles.forgotBtn} onPress={() => router.push('/forgot-password')}>
+                                    <Text style={[styles.forgotText, { color: theme.textMuted }]}>{t('forgotPassword')}</Text>
                                 </TouchableOpacity>
+                            )}
 
-                                <View style={styles.switchSlot}>
-                                    <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-                                        <Text style={[styles.switchText, { color: theme.textMuted }]}>
-                                            {isLogin ? t('noAccount') : t('hasAccount')}
-                                            <Text style={[styles.switchLink, { color: theme.primary }]}>
-                                                {isLogin ? t('joinNow') : t('loginLink')}
-                                            </Text>
+                            {/* Main Button */}
+                            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
+                                <LinearGradient
+                                    colors={[theme.primary, theme.primaryDark]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.submitGradient}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator color="#FFF" />
+                                    ) : (
+                                        <Text style={styles.submitText}>{isLogin ? t('signIn') : t('createAccount')}</Text>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+
+                            {/* Divider */}
+                            <View style={styles.dividerBox}>
+                                <View style={[styles.line, { backgroundColor: theme.border }]} />
+                                <Text style={[styles.orText, { color: theme.textMuted }]}>{t('orContinue')}</Text>
+                                <View style={[styles.line, { backgroundColor: theme.border }]} />
+                            </View>
+
+                            {/* Google Sign In - Prominent & Full Width */}
+                            <TouchableOpacity
+                                style={[styles.googleBtn, { backgroundColor: isDark ? "#1A1A2E" : "#FFF", borderColor: theme.border }]}
+                                onPress={() => handleSocialLogin('Google')}
+                                disabled={socialLoading !== null}
+                            >
+                                {socialLoading === 'Google' ? (
+                                    <ActivityIndicator size="small" color={theme.primary} />
+                                ) : (
+                                    <>
+                                        <ImageBackground
+                                            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/300/300221.png' }}
+                                            style={styles.googleIcon}
+                                            resizeMode="contain"
+                                        />
+                                        <Text style={[styles.googleText, { color: theme.text }]}>
+                                            {t('signIn')} with Google
                                         </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </BlurView>
-                        </Animated.View>
+                                    </>
+                                )}
+                            </TouchableOpacity>
 
-                        <View style={styles.socialSlot}>
-                            <Text style={[styles.socialTitle, { color: theme.textMuted }]}>{t('orContinue')}</Text>
-                            <View style={styles.socialRow}>
-                                <TouchableOpacity style={[styles.socialIcon, { backgroundColor: isDark ? "#1A1A2E" : "#FFF" }]}>
-                                    <Ionicons name="logo-google" size={24} color="#EA4335" />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.socialIcon, { backgroundColor: isDark ? "#1A1A2E" : "#FFF" }]}>
-                                    <Ionicons name="logo-apple" size={24} color={isDark ? "#FFF" : "#000"} />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.socialIcon, { backgroundColor: isDark ? "#1A1A2E" : "#FFF" }]}>
-                                    <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+                            {/* Toggle Sign In / Sign Up */}
+                            <View style={styles.footerSwitch}>
+                                <Text style={[styles.switchText, { color: theme.textMuted }]}>
+                                    {isLogin ? t('noAccount') : t('hasAccount')}
+                                </Text>
+                                <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
+                                    <Text style={[styles.switchLink, { color: theme.primary }]}>
+                                        {isLogin ? t('joinNow') : t('loginLink')}
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
-                        </View>
+
+                        </Animated.View>
                     </ScrollView>
                 </KeyboardAvoidingView>
             </SafeAreaView>
@@ -245,41 +270,62 @@ export default function AuthScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    bgGlow1: { position: "absolute", top: -100, left: -100, width: 400, height: 400, borderRadius: 200, zIndex: -1 },
-    bgGlow2: { position: "absolute", bottom: -100, right: -100, width: 350, height: 350, borderRadius: 175, zIndex: -1 },
+    topGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 300 },
+    bgOrb1: { position: "absolute", top: -80, right: -80, width: 300, height: 300, borderRadius: 150 },
+    bgOrb2: { position: "absolute", bottom: 100, left: -60, width: 200, height: 200, borderRadius: 100 },
+
     safeArea: { flex: 1 },
-    header: { paddingHorizontal: 20, paddingTop: 10 },
-    backBtn: { width: 50, height: 50, borderRadius: 25, overflow: "hidden", elevation: 5 },
+    header: { paddingHorizontal: 24, paddingTop: 10 },
+    backBtn: { width: 44, height: 44, borderRadius: 14, overflow: 'hidden' },
     backBtnBlur: { flex: 1, justifyContent: "center", alignItems: "center" },
-    scrollContent: { paddingBottom: 60 },
 
-    logoSlot: { alignItems: "center", marginTop: 20, marginBottom: 30 },
-    logoCircle: { width: 100, height: 100, borderRadius: 35, justifyContent: "center", alignItems: "center", elevation: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20 },
-    brandText: { fontSize: 32, fontWeight: "900", letterSpacing: 8, marginTop: 20 },
-    tagline: { fontSize: 16, fontWeight: "500", marginTop: 5, letterSpacing: 1 },
+    scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
 
-    formSlot: { paddingHorizontal: 20 },
-    glassCard: { padding: 30, borderRadius: 45, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", overflow: "hidden" },
-    formTitle: { fontSize: 24, fontWeight: "800", marginBottom: 25, textAlign: "center" },
+    brandSection: { marginTop: 40, marginBottom: 40 },
+    welcomeText: { fontSize: 13, fontWeight: "600", letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 },
+    brandTitle: { fontSize: 34, fontWeight: "800", letterSpacing: 0.5 },
+    titleUnderline: { width: 40, height: 4, borderRadius: 2, marginTop: 10 },
 
-    inputBox: { marginBottom: 20 },
-    inputLabel: { fontSize: 13, fontWeight: "700", marginLeft: 5, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 },
-    inputWrapper: { flexDirection: "row", alignItems: "center", paddingHorizontal: 15, height: 60, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.03)", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", gap: 12 },
-    input: { flex: 1, fontSize: 16, fontWeight: "600" },
+    formContainer: {},
+    inputGroup: { marginBottom: 16 },
+    inputWrapper: {
+        flexDirection: "row",
+        alignItems: "center",
+        height: 56,
+        borderRadius: 16,
+        backgroundColor: "rgba(150,150,150,0.08)",
+        borderWidth: 1,
+        borderColor: "transparent",
+        paddingHorizontal: 16,
+        gap: 12
+    },
+    input: { flex: 1, fontSize: 15, fontWeight: "500", height: '100%', textAlign: 'left' },
 
-    forgotBtn: { alignSelf: "flex-end", marginBottom: 25 },
-    forgotText: { fontSize: 14, fontWeight: "700" },
+    forgotBtn: { alignSelf: "flex-end", marginBottom: 24 },
+    forgotText: { fontSize: 13, fontWeight: "600" },
 
-    submitBtn: { height: 65, borderRadius: 24, overflow: "hidden", elevation: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 15 },
-    submitGradient: { flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10 },
-    submitText: { color: "#FFF", fontSize: 18, fontWeight: "900" },
+    submitBtn: { height: 56, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+    submitGradient: { flex: 1, justifyContent: "center", alignItems: "center" },
+    submitText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
 
-    switchSlot: { marginTop: 25, alignItems: "center" },
-    switchText: { fontSize: 15, fontWeight: "500" },
-    switchLink: { fontWeight: "800" },
+    dividerBox: { flexDirection: 'row', alignItems: 'center', marginVertical: 32 },
+    line: { flex: 1, height: 1 },
+    orText: { marginHorizontal: 16, fontSize: 12, fontWeight: "600", letterSpacing: 1 },
 
-    socialSlot: { marginTop: 40, alignItems: "center", paddingHorizontal: 20 },
-    socialTitle: { fontSize: 11, fontWeight: "800", letterSpacing: 2, marginBottom: 20 },
-    socialRow: { flexDirection: "row", gap: 20 },
-    socialIcon: { width: 65, height: 65, borderRadius: 22, justifyContent: "center", alignItems: "center", elevation: 5, shadowColor: "#000", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" }
+    googleBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        height: 56,
+        borderRadius: 16,
+        borderWidth: 1,
+        gap: 12,
+        marginBottom: 32
+    },
+    googleIcon: { width: 24, height: 24 },
+    googleText: { fontSize: 15, fontWeight: "600" },
+
+    footerSwitch: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+    switchText: { fontSize: 14 },
+    switchLink: { fontSize: 14, fontWeight: "700" }
 });

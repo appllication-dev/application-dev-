@@ -1,5 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { auth as firebaseAuth } from '../services/firebaseConfig';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { storage } from '../utils/storage';
 import { useNotifications } from './NotificationContext';
 
@@ -17,6 +20,15 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         checkUser();
+        // Initialize Google Sign-In only if native module is available
+        if (GoogleSignin) {
+            GoogleSignin.configure({
+                webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+                offlineAccess: true,
+            });
+        } else {
+            console.warn('Google Sign-In native module not found. Social login will be disabled.');
+        }
     }, []);
 
     const checkUser = async () => {
@@ -69,6 +81,59 @@ export const AuthProvider = ({ children }) => {
         addNotification('notifWelcomeNewTitle', 'notifWelcomeNewMsg', 'success', { name: userData.displayName });
     };
 
+    const signInWithGoogle = async () => {
+        if (!GoogleSignin) {
+            throw new Error('Google Sign-In is not available in this build. Please install the latest version.');
+        }
+        try {
+            await GoogleSignin.hasPlayServices();
+            // Sign out first to clear cached session and show account picker
+            await GoogleSignin.signOut();
+            const userInfo = await GoogleSignin.signIn();
+
+            // Handle user cancellation (Newer library versions return { type: 'cancelled' })
+            if (userInfo.type === 'cancelled') {
+                console.log('User cancelled Google Sign-In');
+                return; // Stop execution gracefully
+            }
+
+            // Get the credential - handle both old and new library versions
+            const idToken = userInfo.data?.idToken || userInfo.idToken;
+
+            console.log(`Debug Google Sign-In: idToken type=${typeof idToken}, length=${idToken?.length}`);
+
+            if (!idToken || typeof idToken !== 'string' || idToken.length === 0) {
+                // If checking for cancellation above missed it (older versions might just return null data), check here
+                if (userInfo.type === 'cancelled' || userInfo === null) {
+                    console.log('User cancelled Google Sign-In (legacy check)');
+                    return;
+                }
+                console.error('Invalid idToken received:', JSON.stringify(userInfo, null, 2));
+                throw new Error('Google Sign-In failed: No valid ID token received');
+            }
+
+            const googleCredential = GoogleAuthProvider.credential(idToken);
+
+            // Sign in with Firebase
+            const result = await signInWithCredential(firebaseAuth, googleCredential);
+            const firebaseUser = result.user;
+
+            const userData = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                provider: 'google'
+            };
+
+            await login(userData);
+            return userData;
+        } catch (error) {
+            console.error('Google Sign-In Error:', error);
+            throw error;
+        }
+    };
+
     const logout = async () => {
         setUser(null);
         await storage.removeItem('user');
@@ -85,7 +150,6 @@ export const AuthProvider = ({ children }) => {
     const resetPassword = async (email) => {
         // 1. Generate OTP
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        console.log('Generated OTP:', otp); // For testing if email fails
 
         // 2. Store OTP temporarily (in memory for this session)
         setTempOTP({ email, code: otp, timestamp: Date.now() });
@@ -117,7 +181,7 @@ export const AuthProvider = ({ children }) => {
             });
 
             if (response.ok) {
-                console.log('Email sent successfully via API');
+                // Email sent successfully
             } else {
                 const text = await response.text();
                 console.error('EmailJS API Error:', text);
@@ -165,14 +229,25 @@ export const AuthProvider = ({ children }) => {
             // For this version, we remove plaintext storage to improve security.
             // profile.password = newPassword; // REMOVED FOR SECURITY
             await saveToProfiles(profile);
-            console.log('Password updated for:', email, '(Plaintext storage disabled for security)');
+            // Password updated successfully
         }
         setTempOTP(null); // Clear OTP
         return Promise.resolve();
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser, resetPassword, verifyResetCode, confirmNewPassword }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            login,
+            signup,
+            logout,
+            updateUser,
+            resetPassword,
+            verifyResetCode,
+            confirmNewPassword,
+            signInWithGoogle
+        }}>
             {children}
         </AuthContext.Provider>
     );

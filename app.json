@@ -4,12 +4,13 @@
     "slug": "kataraa-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon_final.png",
+    "icon": "./assets/images/icon_kataraa.png",
     "scheme": "kataraa",
     "userInterfaceStyle": "automatic",
+    "jsEngine": "hermes",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash_final.png",
+      "image": "./assets/images/splash_kataraa.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,10 +24,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon_final.png",
+        "foregroundImage": "./assets/images/icon_kataraa.png",
         "backgroundColor": "#667eea"
       },
       "package": "com.kataraa.app",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]
@@ -43,10 +45,11 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon_final.png",
+          "icon": "./assets/images/icon_kataraa.png",
           "color": "#667eea"
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true

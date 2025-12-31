@@ -15,11 +15,9 @@ export async function searchByVoice(transcript) {
     try {
         // 1. Extract keywords from transcription
         const keywords = extractKeywords(transcript);
-        console.log('Extracted keywords:', keywords);
 
         // 2. Build search query
         const searchQuery = buildSearchQuery(keywords);
-        console.log('Search query:', searchQuery);
 
         // 3. Search products using API
         let results = await api.searchProducts(searchQuery);

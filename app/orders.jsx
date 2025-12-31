@@ -15,9 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { useTheme } from './context/ThemeContext';
-import { useCheckout } from './context/CheckoutContext';
-import { useTranslation } from './hooks/useTranslation';
+import { useTheme } from '../src/context/ThemeContext';
+import { useCheckout } from '../src/context/CheckoutContext';
+import { useTranslation } from '../src/hooks/useTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,8 +38,10 @@ export default function OrdersScreen() {
                         <Text style={[styles.orderId, { color: theme.text }]}>Order #{item.id?.toString().slice(-6) || 'N/A'}</Text>
                         <Text style={[styles.orderDate, { color: theme.textMuted }]}>{new Date(item.date || Date.now()).toLocaleDateString()}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: theme.primary + '20' }]}>
-                        <Text style={[styles.statusText, { color: theme.primary }]}>{t('processing') || 'Processing'}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: (item.payment_status === 'Paid' || item.payment_status === 'success') ? '#4CAF5020' : theme.primary + '20' }]}>
+                        <Text style={[styles.statusText, { color: (item.payment_status === 'Paid' || item.payment_status === 'success') ? '#4CAF50' : theme.primary }]}>
+                            {item.payment_status === 'Paid' || item.payment_status === 'success' ? t('paid') || 'Paid' : t('processing') || 'Processing'}
+                        </Text>
                     </View>
                 </View>
 

@@ -21,8 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../context/ThemeContext';
-import { getInsights, clearAnalytics, getAnalyticsData } from '../services/voiceAnalytics';
+import { useTheme } from '../../src/context/ThemeContext';
+import { getInsights, clearAnalytics, getAnalyticsData } from '../../src/services/voiceAnalytics';
 
 const { width } = Dimensions.get('window');
 

@@ -20,14 +20,15 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useTheme } from './context/ThemeContext';
-import { useCart } from './context/CartContext';
-import { useCartAnimation } from './context/CartAnimationContext';
-import { useFavorites } from './context/FavoritesContext';
-import { useTranslation } from './hooks/useTranslation';
-import { storage } from './utils/storage';
-import api from './services/api';
-import ProductCardSoko from './components/ProductCardSoko';
+import { useTheme } from '../src/context/ThemeContext';
+import { useCart } from '../src/context/CartContext';
+import { useCartAnimation } from '../src/context/CartAnimationContext';
+import { useFavorites } from '../src/context/FavoritesContext';
+import { useTranslation } from '../src/hooks/useTranslation';
+import { storage } from '../src/utils/storage';
+import api from '../src/services/api';
+import ProductCardSoko from '../src/components/ProductCardSoko';
+import { ProductSkeleton } from '../src/components/SkeletonLoader';
 
 const { width } = Dimensions.get('window');
 
@@ -110,7 +111,12 @@ export default function SearchScreen() {
             if (pageNum === 1) {
                 setResults(data || []);
             } else {
-                setResults(prev => [...prev, ...(data || [])]);
+                setResults(prev => {
+                    const combined = [...prev, ...(data || [])];
+                    const uniqueMap = new Map();
+                    combined.forEach(item => uniqueMap.set(item.id, item));
+                    return Array.from(uniqueMap.values());
+                });
             }
             setHasMore((data?.length || 0) === 20);
 
@@ -266,12 +272,19 @@ export default function SearchScreen() {
                         </View>
                     </View>
                 ) : loading ? (
-                    <View style={styles.loadingContainer}>
-                        <View style={styles.loadingGlow} />
-                        <ActivityIndicator size="large" color={theme.primary} />
-                        <Text style={styles.loadingText}>
-                            {t('searching')}
-                        </Text>
+                    <View style={styles.content}>
+                        <View style={styles.row}>
+                            <ProductSkeleton style={styles.gridItem} />
+                            <ProductSkeleton style={styles.gridItem} />
+                        </View>
+                        <View style={styles.row}>
+                            <ProductSkeleton style={styles.gridItem} />
+                            <ProductSkeleton style={styles.gridItem} />
+                        </View>
+                        <View style={styles.row}>
+                            <ProductSkeleton style={styles.gridItem} />
+                            <ProductSkeleton style={styles.gridItem} />
+                        </View>
                     </View>
                 ) : results.length === 0 && hasSearched ? (
                     <View style={styles.emptyContainer}>

@@ -27,14 +27,14 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "@jamsch/
 import { Audio } from 'expo-av';
 import { useRouter } from 'expo-router';
 
-import { useTheme } from './context/ThemeContext';
-import { useTranslation } from './hooks/useTranslation';
-import { searchByVoice } from './services/voiceProductSearch';
-import { speakResponse, stopSpeaking, generateResponse } from './services/voiceResponseService';
-import ProductCardSoko from './components/ProductCardSoko';
-import { useCartAnimation } from './context/CartAnimationContext';
-import { useFavorites } from './context/FavoritesContext';
-import { useAuth } from './context/AuthContext';
+import { useTheme } from '../src/context/ThemeContext';
+import { useTranslation } from '../src/hooks/useTranslation';
+import { searchByVoice } from '../src/services/voiceProductSearch';
+import { speakResponse, stopSpeaking, generateResponse } from '../src/services/voiceResponseService';
+import ProductCardSoko from '../src/components/ProductCardSoko';
+import { useCartAnimation } from '../src/context/CartAnimationContext';
+import { useFavorites } from '../src/context/FavoritesContext';
+import { useAuth } from '../src/context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 

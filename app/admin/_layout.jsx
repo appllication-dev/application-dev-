@@ -4,7 +4,7 @@
  */
 
 import { Stack } from 'expo-router';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../src/context/ThemeContext';
 
 export default function AdminLayout() {
     const { theme } = useTheme();

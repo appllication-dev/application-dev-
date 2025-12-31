@@ -19,19 +19,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Services & Context
-import api from '../services/api';
+import api from '../../src/services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useCart } from '../context/CartContext';
-import { useCartAnimation } from '../context/CartAnimationContext';
-import { useFavorites } from '../context/FavoritesContext';
-import { useTheme } from '../context/ThemeContext';
+import { useCart } from '../../src/context/CartContext';
+import { useCartAnimation } from '../../src/context/CartAnimationContext';
+import { useFavorites } from '../../src/context/FavoritesContext';
+import { useTheme } from '../../src/context/ThemeContext';
 
 // Components
-import SearchHeader from '../components/SearchHeader';
-import ProductCardSoko from '../components/ProductCardSoko';
-import BrandSection from '../components/BrandSection';
+import SearchHeader from '../../src/components/SearchHeader';
+import ProductCardSoko from '../../src/components/ProductCardSoko';
+import BrandSection from '../../src/components/BrandSection';
+import { ProductSkeleton, CategorySkeleton } from '../../src/components/SkeletonLoader';
 
-import { useTranslation } from '../hooks/useTranslation';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width } = Dimensions.get('window');
 
@@ -70,7 +71,13 @@ export default function ProductsScreen() {
             if (pageNum === 1) {
                 setProducts(data || []);
             } else {
-                setProducts(prev => [...prev, ...(data || [])]);
+                setProducts(prev => {
+                    const combined = [...prev, ...(data || [])];
+                    // Deduplicate by ID
+                    const uniqueMap = new Map();
+                    combined.forEach(item => uniqueMap.set(item.id, item));
+                    return Array.from(uniqueMap.values());
+                });
             }
             setHasMore((data?.length || 0) === 20);
         } catch (error) {
@@ -217,7 +224,7 @@ export default function ProductsScreen() {
 
         // Body
         if (lowerName.includes('body') || lowerName.includes('الجسم'))
-            return { label: t('body'), icon: 'emoticon-sparkles-outline', provider: MaterialCommunityIcons };
+            return { label: t('body'), icon: 'emoticon-outline', provider: MaterialCommunityIcons };
 
         // Serum
         if (lowerName.includes('serum') || lowerName.includes('السيروم'))
@@ -237,7 +244,7 @@ export default function ProductsScreen() {
 
         // Cleansers
         if (lowerName.includes('cleanser') || lowerName.includes('منظفات'))
-            return { label: t('cleansers'), icon: 'shimmer', provider: MaterialCommunityIcons };
+            return { label: t('cleansers'), icon: 'water-outline', provider: MaterialCommunityIcons };
 
         // Masks
         if (lowerName.includes('mask') || lowerName.includes('ماسك'))
@@ -245,7 +252,7 @@ export default function ProductsScreen() {
 
         // Creams & Moisturizers
         if (lowerName.includes('cream') || lowerName.includes('moist') || lowerName.includes('مرطب'))
-            return { label: t('moisturizers'), icon: 'cream', provider: MaterialCommunityIcons };
+            return { label: t('moisturizers'), icon: 'lotion-outline', provider: MaterialCommunityIcons };
 
         // Eye Care
         if (lowerName.includes('eye') || lowerName.includes('عين'))
@@ -337,14 +344,15 @@ export default function ProductsScreen() {
         </View>
     );
 
-    if (loading && products.length === 0) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.primary} />
-                <Text style={styles.loadingText}>{t('loadingProducts')}</Text>
-            </View>
-        );
-    }
+    // No full screen loader. Show skeletons in list.
+    // if (loading && products.length === 0) {
+    //     return (
+    //         <View style={styles.loadingContainer}>
+    //             <ActivityIndicator size="large" color={theme.primary} />
+    //             <Text style={styles.loadingText}>{t('loadingProducts')}</Text>
+    //         </View>
+    //     );
+    // }
 
     return (
         <View style={styles.container}>
@@ -362,9 +370,12 @@ export default function ProductsScreen() {
                 // Grid View
                 <FlatList
                     key="grid-view"
-                    data={products}
-                    renderItem={renderProduct}
-                    keyExtractor={(item) => item.id.toString()}
+                    data={loading && products.length === 0 ? [1, 2, 3, 4, 5, 6] : products}
+                    renderItem={loading && products.length === 0 ?
+                        () => <View style={styles.gridItem}><ProductSkeleton style={{ width: '100%' }} /></View> :
+                        renderProduct
+                    }
+                    keyExtractor={(item, index) => loading && products.length === 0 ? index.toString() : item.id.toString()}
                     numColumns={2}
                     ListHeaderComponent={ListHeader}
                     ListEmptyComponent={

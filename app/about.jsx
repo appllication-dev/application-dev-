@@ -13,8 +13,8 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from './context/ThemeContext';
-import { useTranslation } from './hooks/useTranslation';
+import { useTheme } from '../src/context/ThemeContext';
+import { useTranslation } from '../src/hooks/useTranslation';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');

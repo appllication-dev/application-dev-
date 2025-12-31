@@ -1,39 +1,63 @@
 {
-    "project_info": {
-        "project_number": "000000000000",
-        "project_id": "dummy-project",
-        "storage_bucket": "dummy-project.appspot.com"
-    },
-    "client": [
-        {
-            "client_info": {
-                "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
-                "android_client_info": {
-                    "package_name": "com.funnyshop.app"
-                }
-            },
-            "oauth_client": [
-                {
-                    "client_id": "dummy-client-id.apps.googleusercontent.com",
-                    "client_type": 3
-                }
-            ],
-            "api_key": [
-                {
-                    "current_key": "dummy-api-key"
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": [
-                        {
-                            "client_id": "dummy-client-id.apps.googleusercontent.com",
-                            "client_type": 3
-                        }
-                    ]
-                }
-            }
+  "project_info": {
+    "project_number": "1076765269610",
+    "project_id": "first-app-95051",
+    "storage_bucket": "first-app-95051.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1076765269610:android:e07a1461338ec94947b413",
+        "android_client_info": {
+          "package_name": "com.kataraa.app"
         }
-    ],
-    "configuration_version": "1"
+      },
+      "oauth_client": [
+        {
+          "client_id": "1076765269610-926dg1v1po5jgbbi4sgtlh84u1eqf498.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kataraa.app",
+            "certificate_hash": "f9359549ffa3aeb834704cad3a7d1794f16c8d4b"
+          }
+        },
+        {
+          "client_id": "1076765269610-a50n9l5flo29o86fbjguv286fu69j3sg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kataraa.app",
+            "certificate_hash": "9614b8be43abefa2f339cdb120df23ebbf000d94"
+          }
+        },
+        {
+          "client_id": "1076765269610-f61hg6p42qabfvv2cc2m8jutb57q4f70.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kataraa.app",
+            "certificate_hash": "c49175e61e259a9393e81a2df4ce0a9855609c0b"
+          }
+        },
+        {
+          "client_id": "1076765269610-u5to0vkmrfc2b82f8hvjbg6jfaog3oom.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuC19qSlFLQrzl4NGHEulOidbPgt_xXm8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1076765269610-u5to0vkmrfc2b82f8hvjbg6jfaog3oom.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
 }

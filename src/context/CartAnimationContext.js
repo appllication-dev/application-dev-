@@ -48,7 +48,6 @@ export const CartAnimationProvider = ({ children }) => {
 
     // Trigger the epic animation with product data
     const triggerAddToCart = useCallback((product, sourceRef = null) => {
-        console.log('🛍️ triggerAddToCart called!', product?.name);
 
         // First measure cart icon position
         measureCartIcon();
@@ -69,7 +68,6 @@ export const CartAnimationProvider = ({ children }) => {
         });
 
         // Show animation
-        console.log('🎬 Setting animationVisible to TRUE');
         setAnimationVisible(true);
 
         // Add to cart (will update after animation via context)

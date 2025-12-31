@@ -9,19 +9,20 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
+  // Image, 
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useFavorites } from '../context/FavoritesContext';
-import { useCart } from '../context/CartContext';
-import { useTheme } from '../context/ThemeContext';
-import { useTranslation } from '../hooks/useTranslation';
-import { useSettings } from '../context/SettingsContext';
+import { useFavorites } from '../../src/context/FavoritesContext';
+import { useCart } from '../../src/context/CartContext';
+import { useTheme } from '../../src/context/ThemeContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
+import { useSettings } from '../../src/context/SettingsContext';
 import { BlurView } from 'expo-blur';
 import Animated, {
   FadeInDown,
@@ -77,7 +78,12 @@ export default function FavoritesScreen() {
           onPress={() => handleItemPress(item.id)}
         >
           <View style={styles.imageContainer}>
-            <Image source={{ uri: item.image }} style={styles.image} />
+            <Image
+              source={item.image}
+              style={styles.image}
+              contentFit="cover"
+              transition={200}
+            />
             <LinearGradient
               colors={['transparent', isDark ? 'rgba(26,21,32,0.5)' : 'rgba(254,251,255,0.5)']}
               style={styles.imageOverlay}

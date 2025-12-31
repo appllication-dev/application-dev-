@@ -302,11 +302,10 @@ const translations = {
         taglineLogin: 'Welcome back to Luxury',
         taglineRegister: 'Join the Elite Community',
         signIn: 'Sign In',
-        noAccount: "Don't have an account? ",
-        hasAccount: "Already have an account? ",
         joinNow: "Join now",
         loginLink: "Login here",
         orContinue: "OR CONTINUE WITH",
+        dontHaveAccount: "Don't have an account?",
     },
     ar: {
         // Nav & Common
@@ -567,7 +566,7 @@ const translations = {
         updateFailed: 'فشل تحديث الملف الشخصي',
         saveChanges: 'حفظ التغييرات',
         changePhoto: 'تغيير صورة الملف الشخصي',
-        placeholderName: 'فلانة بنت فلان',
+        placeholderName: 'الاسم الكامل',
         placeholderEmail: 'beauty@kataraa.com',
         placeholderPhone: '+965 1234 5678',
         placeholderPass: '••••••••',
@@ -603,20 +602,21 @@ const translations = {
         taglineLogin: 'مرحباً بكِ في عالم الفخامة',
         taglineRegister: 'انضمي لمجتمع النخبة',
         signIn: 'تسجيل الدخول',
-        noAccount: "ليس لديك حساب؟ ",
-        hasAccount: "لديك حساب بالفعل؟ ",
         joinNow: "انضمي الآن",
         loginLink: "سجلي الدخول هنا",
         orContinue: "أو تابعي باستخدام",
+        dontHaveAccount: "ليس لديك حساب؟",
     }
 };
 
 export const useTranslation = () => {
     // Consume language from SettingsContext to ensure reactivity
-    const { language, changeLanguage } = useSettings();
+    const settings = useSettings();
 
-    const locale = language || (I18nManager.isRTL ? 'ar' : 'en');
-    const setLocale = changeLanguage; // Alias for backward compatibility if needed
+    // Fallback if context is not available (e.g. within an ErrorBoundary)
+    const language = settings?.language || 'ar';
+    const setLocale = settings?.changeLanguage || (() => { });
+    const locale = language;
 
     const t = (key, params = {}) => {
         let text = translations[locale]?.[key] || translations['en']?.[key] || key;

@@ -18,9 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown, FadeInUp, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
-import { useTheme } from './context/ThemeContext';
-import { useAuth } from './context/AuthContext';
-import { useTranslation } from './hooks/useTranslation';
+import { useTheme } from '../src/context/ThemeContext';
+import { useAuth } from '../src/context/AuthContext';
+import { useTranslation } from '../src/hooks/useTranslation';
 
 const { width, height } = Dimensions.get('window');
 

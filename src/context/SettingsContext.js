@@ -8,18 +8,40 @@ const SettingsContext = createContext();
 
 export const SettingsProvider = ({ children }) => {
     const [notifications, setNotifications] = useState(true);
-    const [language, setLanguage] = useState(I18nManager.isRTL ? 'ar' : 'en');
+    const [language, setLanguage] = useState('ar');
 
     useEffect(() => {
         loadSettings();
     }, []);
 
     const loadSettings = async () => {
-        const savedNotifs = await storage.getItem('notifications');
-        const savedLang = await storage.getItem('language');
+        try {
+            const savedNotifs = await storage.getItem('notifications');
+            const savedLang = await storage.getItem('language');
 
-        if (savedNotifs !== null) setNotifications(savedNotifs);
-        if (savedLang !== null) setLanguage(savedLang);
+            if (savedNotifs !== null) setNotifications(savedNotifs);
+
+            if (savedLang !== null) {
+                setLanguage(savedLang);
+                const isRTL = savedLang === 'ar';
+                if (I18nManager.isRTL !== isRTL) {
+                    I18nManager.allowRTL(isRTL);
+                    I18nManager.forceRTL(isRTL);
+                    await Updates.reloadAsync();
+                }
+            } else {
+                // First launch: force Arabic and RTL
+                setLanguage('ar');
+                await storage.setItem('language', 'ar');
+                if (!I18nManager.isRTL) {
+                    I18nManager.allowRTL(true);
+                    I18nManager.forceRTL(true);
+                    await Updates.reloadAsync();
+                }
+            }
+        } catch (e) {
+            console.error('Error loading settings:', e);
+        }
     };
 
     const toggleNotifications = async () => {

@@ -21,7 +21,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { storage } from "../utils/storage";
+import { storage } from "../../src/utils/storage";
 import Animated, {
   FadeInDown,
   FadeIn,
@@ -32,17 +32,18 @@ import Animated, {
   Easing
 } from "react-native-reanimated";
 import { useRouter } from "expo-router";
-import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
-import { useSettings } from "../context/SettingsContext";
-import { useFavorites } from "../context/FavoritesContext";
-import { useCheckout } from "../context/CheckoutContext";
-import SavedAddresses from "../components/SavedAddresses";
-import PaymentMethods from "../components/PaymentMethods";
-import { useTranslation } from "../hooks/useTranslation";
+import { useAuth } from "../../src/context/AuthContext";
+import { useTheme } from "../../src/context/ThemeContext";
+import { useSettings } from "../../src/context/SettingsContext";
+import { useFavorites } from "../../src/context/FavoritesContext";
+import { useCheckout } from "../../src/context/CheckoutContext";
+
+import SavedAddresses from "../../src/components/SavedAddresses";
+import PaymentMethods from "../../src/components/PaymentMethods";
+import { useTranslation } from "../../src/hooks/useTranslation";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import EditProfileModal from "../components/EditProfileModal";
+import EditProfileModal from "../../src/components/EditProfileModal";
 
 const { width } = Dimensions.get("window");
 
@@ -52,6 +53,7 @@ const Profile = () => {
   const { toggleTheme, theme, isDark } = useTheme();
   const { favorites } = useFavorites();
   const { orders } = useCheckout();
+
 
   const {
     notifications,

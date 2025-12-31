@@ -3,15 +3,16 @@
  * Light version without heavy animations
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
-    Image,
+    // Image, // Replaced with expo-image
     ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
     useSharedValue,
@@ -36,20 +37,20 @@ const ProductCardSwipeable = React.memo(({
 }) => {
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
-    const styles = getStyles(theme, isDark);
+    const styles = useMemo(() => getStyles(theme, isDark), [theme, isDark]);
 
     const [activeIndex, setActiveIndex] = useState(0);
     const scrollRef = useRef(null);
 
     // Heart animation only (no continuous animations)
     const heartScale = useSharedValue(1);
-    const handleHeartPress = () => {
+    const handleHeartPress = useCallback(() => {
         heartScale.value = withSequence(
             withSpring(1.3, { damping: 8 }),
             withSpring(1, { damping: 10 })
         );
         onFavorite?.(item);
-    };
+    }, [item, onFavorite]);
 
     const heartStyle = useAnimatedStyle(() => ({
         transform: [{ scale: heartScale.value }],
@@ -57,8 +58,9 @@ const ProductCardSwipeable = React.memo(({
 
     // Get images
     const productImages = item?.images || [];
-    const image1 = productImages[0]?.src || 'https://via.placeholder.com/200';
-    const image2 = productImages[1]?.src || productImages[0]?.src || 'https://via.placeholder.com/200';
+    const placeholderImage = require('../../assets/images/placeholder.png');
+    const image1 = productImages[0]?.src || placeholderImage;
+    const image2 = productImages[1]?.src || productImages[0]?.src || placeholderImage;
     const images = [image1, image2];
 
     const isOnSale = item?.on_sale && item?.regular_price && item?.sale_price;
@@ -67,18 +69,18 @@ const ProductCardSwipeable = React.memo(({
     const formatPrice = (price) => `${parseFloat(price || 0).toFixed(3)} ${t('currency')}`;
 
     // Handle scroll
-    const handleScroll = (event) => {
+    const handleScroll = useCallback((event) => {
         const offsetX = event.nativeEvent.contentOffset.x;
         const index = Math.round(offsetX / cardWidth);
         if (index !== activeIndex && index >= 0 && index < 2) {
             setActiveIndex(index);
         }
-    };
+    }, [activeIndex, cardWidth]);
 
-    const handleDotPress = (index) => {
+    const handleDotPress = useCallback((index) => {
         scrollRef.current?.scrollTo({ x: index * cardWidth, animated: true });
         setActiveIndex(index);
-    };
+    }, [cardWidth]);
 
     return (
         <View style={[styles.card, { width: cardWidth }]}>
@@ -98,9 +100,10 @@ const ProductCardSwipeable = React.memo(({
                         {images.map((imgUrl, index) => (
                             <Image
                                 key={index}
-                                source={{ uri: imgUrl }}
+                                source={imgUrl}
                                 style={[styles.image, { width: cardWidth - 12, height: IMAGE_HEIGHT }]}
-                                resizeMode="contain"
+                                contentFit="contain"
+                                transition={200}
                             />
                         ))}
                     </ScrollView>

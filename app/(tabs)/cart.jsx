@@ -10,18 +10,19 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
+  // Image,
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCart } from '../context/CartContext';
-import { useTheme } from '../context/ThemeContext';
-
-import { useTranslation } from '../hooks/useTranslation';
+import { useCart } from '../../src/context/CartContext';
+import { useTheme } from '../../src/context/ThemeContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -39,8 +40,16 @@ export default function CartScreen() {
   const finalTotal = cartTotal + shippingFee;
 
   const renderItem = ({ item }) => (
-    <View style={styles.cartItem}>
-      <Image source={{ uri: item.image }} style={styles.itemImage} />
+    <Animated.View
+      entering={FadeInDown.springify()}
+      style={styles.cartItem}
+    >
+      <Image
+        source={item.image}
+        style={styles.itemImage}
+        contentFit="cover"
+        transition={200}
+      />
 
       <View style={styles.itemInfo}>
         <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
@@ -71,7 +80,7 @@ export default function CartScreen() {
       >
         <Ionicons name="trash-outline" size={20} color={theme.error} />
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 
   return (
@@ -97,12 +106,23 @@ export default function CartScreen() {
       </LinearGradient>
 
       {cartItems.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <Animated.View
+          entering={FadeInUp.delay(200).springify()}
+          style={styles.emptyContainer}
+        >
+          <View style={[styles.bgCircle, { backgroundColor: theme.primary + '10', top: -40, right: -40 }]} />
+
           <View style={styles.emptyIconBg}>
+            <LinearGradient
+              colors={[theme.primary + '20', theme.primary + '05']}
+              style={StyleSheet.absoluteFill}
+              borderRadius={60}
+            />
             <Ionicons name="cart-outline" size={60} color={theme.primary} />
           </View>
           <Text style={styles.emptyTitle}>{t('emptyCartTitle')}</Text>
           <Text style={styles.emptySubtitle}>{t('emptyCartSubtitle')}</Text>
+
           <TouchableOpacity
             style={styles.browseBtn}
             onPress={() => router.push('/')}
@@ -112,7 +132,7 @@ export default function CartScreen() {
               <Text style={styles.browseBtnText}>{t('shopNow')}</Text>
             </LinearGradient>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       ) : (
         <>
           <FlatList

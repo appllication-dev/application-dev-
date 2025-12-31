@@ -30,15 +30,15 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { useTheme } from '../context/ThemeContext';
-import api from '../services/api';
-import { useCart } from '../context/CartContext';
-import { useFavorites } from '../context/FavoritesContext';
-import { useAuth } from '../context/AuthContext';
-import AddToCartSuccess from '../components/AddToCartSuccess';
-import ReviewSection from '../components/ReviewSection';
-import socialService from '../services/socialService';
-import { useTranslation } from '../hooks/useTranslation';
+import { useTheme } from '../../src/context/ThemeContext';
+import api from '../../src/services/api';
+import { useCart } from '../../src/context/CartContext';
+import { useFavorites } from '../../src/context/FavoritesContext';
+import { useAuth } from '../../src/context/AuthContext';
+import AddToCartSuccess from '../../src/components/AddToCartSuccess';
+import ReviewSection from '../../src/components/ReviewSection';
+import socialService from '../../src/services/socialService';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -213,7 +213,7 @@ export default function ProductDetailsScreen() {
           <View style={styles.imageFrame}>
             <BlurView intensity={isDark ? 20 : 40} tint={isDark ? "dark" : "light"} style={styles.imageFrameBlur}>
               <Image
-                source={{ uri: images[selectedImage]?.src || 'https://via.placeholder.com/400' }}
+                source={images[selectedImage]?.src ? { uri: images[selectedImage].src } : require('../../assets/images/placeholder.png')}
                 style={styles.mainImage}
                 resizeMode="contain"
               />

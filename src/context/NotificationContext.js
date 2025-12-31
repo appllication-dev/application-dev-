@@ -18,52 +18,63 @@ Notifications.setNotificationHandler({
     }),
 });
 
+// Direct Firebase import to avoid circular dependency with AuthContext
+import { auth } from '../services/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
+    // Maintain local user state for storage isolation
+    const [user, setUser] = useState(null);
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadedUserEmail, setLoadedUserEmail] = useState(null);
     const [expoPushToken, setExpoPushToken] = useState('');
     const notificationListener = useRef();
     const responseListener = useRef();
 
+    // Listen for auth changes directly to isolate storage
     useEffect(() => {
-        loadNotifications();
-
-        // Register for push notifications
-        registerForPushNotificationsAsync().then(token => {
-            if (token) setExpoPushToken(token);
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            setUser(firebaseUser);
         });
-
-        // This listener is fired whenever a notification is received while the app is foregrounded
-        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            const { title, body } = notification.request.content;
-            addNotification(title, body, 'info', notification.request.content.data);
-        });
-
-        // This listener is fired whenever a user taps on or interacts with a notification
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            console.log('Notification Response:', response);
-        });
-
-        return () => {
-            Notifications.removeNotificationSubscription(notificationListener.current);
-            Notifications.removeNotificationSubscription(responseListener.current);
-        };
+        return unsubscribe;
     }, []);
 
     useEffect(() => {
-        if (!loading) {
-            AsyncStorage.setItem('@kataraa_notifications', JSON.stringify(notifications));
+        loadNotifications();
+    }, [user]);
+
+    useEffect(() => {
+        if (!loading && user?.email && user.email === loadedUserEmail) {
+            const key = `@kataraa_notifications_${user.email.toLowerCase()}`;
+            AsyncStorage.setItem(key, JSON.stringify(notifications));
         }
-    }, [notifications, loading]);
+    }, [notifications, loading, user, loadedUserEmail]);
 
     const loadNotifications = async () => {
+        if (!user?.email) {
+            setNotifications([]);
+            setLoadedUserEmail(null);
+            // Don't set loading false immediately if we are just switching users, 
+            // but here we might be strictly logging out.
+            // If user is null, we clear notifications.
+            return;
+        }
+
+        setLoading(true);
+        setNotifications([]); // Clear for new user
+
         try {
-            const saved = await AsyncStorage.getItem('@kataraa_notifications');
+            const key = `@kataraa_notifications_${user.email.toLowerCase()}`;
+            const saved = await AsyncStorage.getItem(key);
             if (saved) {
                 setNotifications(JSON.parse(saved));
+            } else {
+                setNotifications([]);
             }
+            setLoadedUserEmail(user.email);
         } catch (error) {
             console.error('Error loading notifications:', error);
         } finally {
@@ -71,7 +82,7 @@ export const NotificationProvider = ({ children }) => {
         }
     };
 
-    const addNotification = (title, message, type = 'info', params = {}) => {
+    const addNotification = async (title, message, type = 'info', params = {}) => {
         const newNotif = {
             id: Date.now().toString(),
             title,
@@ -82,6 +93,20 @@ export const NotificationProvider = ({ children }) => {
             read: false,
         };
         setNotifications(prev => [newNotif, ...prev]);
+
+        // Also trigger a system notification (Status Bar)
+        try {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: title,
+                    body: message,
+                    data: { ...params, type },
+                },
+                trigger: null, // Show immediately
+            });
+        } catch (error) {
+            console.log('Error showing system notification:', error);
+        }
     };
 
     const markAsRead = (id) => {
@@ -99,6 +124,8 @@ export const NotificationProvider = ({ children }) => {
     const clearNotifications = () => {
         setNotifications([]);
     };
+
+
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -146,13 +173,20 @@ async function registerForPushNotificationsAsync() {
             if (!projectId) {
                 console.warn('No EAS Project ID found in config. Check your app.json.');
             }
-            token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-            console.log('Expo Push Token:', token);
+
+            // Timeout token fetch to prevent stalling (max 5s)
+            const tokenPromise = Notifications.getExpoPushTokenAsync({ projectId });
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Push token timeout')), 5000)
+            );
+
+            token = (await Promise.race([tokenPromise, timeoutPromise])).data;
         } catch (e) {
-            console.error('Error getting push token:', e);
+            console.warn('Push notification registration skipped:', e.message);
+            // Non-blocking: App continues even if notifications fail
         }
     } else {
-        console.log('Must use physical device for Push Notifications');
+        // Physical device required for Push Notifications
     }
 
     return token;

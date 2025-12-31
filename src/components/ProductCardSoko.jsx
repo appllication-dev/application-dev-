@@ -33,7 +33,10 @@ const ProductCardSoko = React.memo(({
     const { t } = useTranslation();
     const styles = getStyles(theme, isDark, t);
 
-    const imageUrl = item?.images?.[0]?.src || 'https://via.placeholder.com/200';
+    const imageSource = item?.images?.[0]?.src
+        ? { uri: item.images[0].src }
+        : require('../../assets/images/placeholder.png');
+
     const isOnSale = item?.on_sale && item?.regular_price && item?.sale_price;
     const isOutOfStock = item?.stock_status === 'outofstock';
 
@@ -55,7 +58,7 @@ const ProductCardSoko = React.memo(({
             {/* Image Container */}
             <View style={styles.imageContainer}>
                 <Image
-                    source={{ uri: imageUrl }}
+                    source={imageSource}
                     style={styles.image}
                     resizeMode="cover"
                 />

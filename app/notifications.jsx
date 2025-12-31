@@ -2,9 +2,9 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from './context/ThemeContext';
-import { useTranslation } from './hooks/useTranslation';
-import { useNotifications } from './context/NotificationContext';
+import { useTheme } from '../src/context/ThemeContext';
+import { useTranslation } from '../src/hooks/useTranslation';
+import { useNotifications } from '../src/context/NotificationContext';
 
 export default function NotificationsScreen() {
     const router = useRouter();

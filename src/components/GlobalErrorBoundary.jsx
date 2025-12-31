@@ -5,8 +5,12 @@ import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 
 export const ErrorFallback = ({ error, resetErrorBoundary }) => {
-    const { theme, isDark } = useTheme();
-    const { t } = useTranslation();
+    // Defensive context consumption - these might be undefined if the error happened high in the tree
+    const themeContext = useTheme();
+    const translationContext = useTranslation();
+
+    const theme = themeContext?.theme || { background: '#fff', text: '#000', error: '#f44336', primary: '#000', textSecondary: '#666' };
+    const t = translationContext?.t || ((k) => k);
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -83,3 +87,5 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 });
+
+export default ErrorFallback;

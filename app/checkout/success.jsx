@@ -15,8 +15,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useNotifications } from '../context/NotificationContext';
-import { useTranslation } from '../hooks/useTranslation';
+import { useNotifications } from '../../src/context/NotificationContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
+import PaymentService from '../../src/services/PaymentService';
+import { ActivityIndicator } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -94,9 +96,10 @@ const ConfettiParticle = ({ delay, startX }) => {
 
 export default function OrderSuccessScreen() {
     const router = useRouter();
-    const { orderId } = useLocalSearchParams();
-    const { addNotification } = useNotifications();
     const { t } = useTranslation();
+    const [verifying, setVerifying] = React.useState(!!useLocalSearchParams().paymentId);
+    const [paymentStatus, setPaymentStatus] = React.useState(null); // 'success', 'failed'
+    const { paymentId } = useLocalSearchParams();
 
     // Animations
     const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -105,6 +108,25 @@ export default function OrderSuccessScreen() {
     const checkmarkScale = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        const verify = async () => {
+            if (paymentId) {
+                try {
+                    const status = await PaymentService.getPaymentStatus(paymentId);
+                    if (status.IsSuccess && status.Data.InvoiceStatus === 'Paid') {
+                        setPaymentStatus('success');
+                    } else {
+                        setPaymentStatus('failed');
+                    }
+                } catch (e) {
+                    setPaymentStatus('failed');
+                } finally {
+                    setVerifying(false);
+                }
+            }
+        };
+
+        verify();
+
         // Entrance animations
         Animated.sequence([
             Animated.spring(scaleAnim, {
@@ -136,11 +158,11 @@ export default function OrderSuccessScreen() {
         // Add success notification
         addNotification(
             'notifOrderTitle',
-            'notifOrderMsg',
-            'success',
+            paymentStatus === 'failed' ? 'فشل الدفع للطلب' : 'notifOrderMsg',
+            paymentStatus === 'failed' ? 'error' : 'success',
             { orderId: orderId || '' }
         );
-    }, []);
+    }, [paymentId]);
 
     // Generate confetti particles
     const confettiParticles = Array.from({ length: 30 }, (_, i) => ({
@@ -188,8 +210,12 @@ export default function OrderSuccessScreen() {
                         }
                     ]}
                 >
-                    🎉 تم استلام طلبك!
+                    {verifying ? 'جاري التأكد من الدفع...' :
+                        paymentStatus === 'failed' ? '❌ عذراً، فشل الدفع' :
+                            '🎉 تم استلام طلبك!'}
                 </Animated.Text>
+
+                {verifying && <ActivityIndicator size="large" color="#667eea" style={{ marginVertical: 20 }} />}
 
                 {/* Order Number */}
                 <Animated.View

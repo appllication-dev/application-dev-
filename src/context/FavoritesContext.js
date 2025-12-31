@@ -4,6 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
 
 const FavoritesContext = createContext();
 
@@ -16,25 +17,47 @@ export const useFavorites = () => {
 };
 
 export const FavoritesProvider = ({ children }) => {
+  const { user } = useAuth(); // Get current user
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadedUserEmail, setLoadedUserEmail] = useState(null);
 
+  // Load favorites when user changes
   useEffect(() => {
     loadFavorites();
-  }, []);
+  }, [user]);
 
+  // Save favorites when changed
   useEffect(() => {
-    if (!loading) {
-      AsyncStorage.setItem('@kataraa_favorites', JSON.stringify(favorites));
+    if (!loading && user?.email && user.email === loadedUserEmail) {
+      const handler = setTimeout(() => {
+        const key = `@kataraa_favorites_${user.email.toLowerCase()}`;
+        AsyncStorage.setItem(key, JSON.stringify(favorites));
+      }, 500);
+      return () => clearTimeout(handler);
     }
-  }, [favorites, loading]);
+  }, [favorites, loading, user, loadedUserEmail]);
 
   const loadFavorites = async () => {
+    if (!user?.email) {
+      setFavorites([]);
+      setLoadedUserEmail(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setFavorites([]); // Clear immediately to avoid flash
+
     try {
-      const saved = await AsyncStorage.getItem('@kataraa_favorites');
+      const key = `@kataraa_favorites_${user.email.toLowerCase()}`;
+      const saved = await AsyncStorage.getItem(key);
       if (saved) {
         setFavorites(JSON.parse(saved));
+      } else {
+        setFavorites([]);
       }
+      setLoadedUserEmail(user.email);
     } catch (error) {
       console.error('Error loading favorites:', error);
     } finally {

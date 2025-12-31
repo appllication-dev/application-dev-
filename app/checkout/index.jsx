@@ -14,24 +14,31 @@ import {
     Image,
     KeyboardAvoidingView,
     Platform,
+    Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCheckout } from '../context/CheckoutContext';
-import { useCart } from '../context/CartContext';
-import { kuwaitGovernorates, getCitiesByGovernorate, calculateShipping } from '../data/kuwaitLocations';
-import { COLORS, SPACING, RADIUS, GRADIENTS, SHADOWS } from '../theme/colors';
-import { useTranslation } from '../hooks/useTranslation';
+import { useCheckout } from '../../src/context/CheckoutContext';
+import { useCart } from '../../src/context/CartContext';
+import { kuwaitGovernorates, getCitiesByGovernorate, calculateShipping } from '../../src/data/kuwaitLocations';
+import { COLORS, SPACING, RADIUS, GRADIENTS, SHADOWS } from '../../src/theme/colors';
+import { useTranslation } from '../../src/hooks/useTranslation';
+import api from '../../src/services/api';
+import PaymentService from '../../src/services/PaymentService';
+import { useAuth } from '../../src/context/AuthContext';
+import * as Linking from 'expo-linking';
 
 export default function CheckoutScreen() {
     const router = useRouter();
     const {
         shippingInfo, setShippingInfo, setShippingFee, addOrder,
-        savedAddresses, saveAddress, savedPaymentMethods, savePaymentMethod
+        savedAddresses, saveAddress, savedPaymentMethods, savePaymentMethod,
+        pendingOrderId, setPendingOrderId
     } = useCheckout();
     const { cartItems, getCartTotal, clearCart } = useCart();
+    const { user } = useAuth();
     const { t } = useTranslation();
 
     const [step, setStep] = useState(1); // 1 = shipping, 2 = payment
@@ -111,23 +118,70 @@ export default function CheckoutScreen() {
         }
     };
 
+    const verifyStockBeforeOrder = async () => {
+        try {
+            const stockChecks = await Promise.all(cartItems.map(item => api.getProduct(item.id)));
+            const outOfStockItems = stockChecks.filter(p => !p || p.stock_status === 'outofstock');
+
+            if (outOfStockItems.length > 0) {
+                const itemNames = outOfStockItems.map(p => p?.name || 'Unknown Item').join(', ');
+                Alert.alert(t('outOfStock') || 'Out of Stock', `${itemNames}. ${t('pleaseUpdateCart') || 'Please remove from cart and try again.'}`);
+                return false;
+            }
+            return true;
+        } catch (error) {
+            console.error('Stock verification error:', error);
+            return false;
+        }
+    };
+
     const handlePlaceOrder = async () => {
         setIsProcessing(true);
         try {
-            // Simulate order processing
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // 0. Verify Stock
+            const isStockValid = await verifyStockBeforeOrder();
+            if (!isStockValid) {
+                setIsProcessing(false);
+                return;
+            }
 
-            const orderData = {
-                id: Date.now().toString(),
-                items: [...cartItems],
-                total: finalTotal.toFixed(3),
-                date: new Date().toISOString(),
-                status: 'Processing',
-                shippingInfo: { ...shippingInfo },
-                paymentMethod
+            // 1. Construct WooCommerce Order Data
+            const wooOrderData = {
+                payment_method: paymentMethod,
+                payment_method_title: paymentMethod === 'cod' ? 'Cash on Delivery' : (paymentMethod === 'knet' ? 'KNET' : 'Credit Card'),
+                set_paid: false,
+                status: 'pending',
+                billing: {
+                    first_name: shippingInfo.fullName,
+                    address_1: shippingInfo.street,
+                    address_2: `Block ${shippingInfo.block}`,
+                    city: shippingInfo.city,
+                    state: shippingInfo.governorate,
+                    postcode: 'KW',
+                    country: 'KW',
+                    email: user?.email || 'guest@kataraa.com',
+                    phone: shippingInfo.phone
+                },
+                shipping: {
+                    first_name: shippingInfo.fullName,
+                    address_1: shippingInfo.street,
+                    address_2: `Block ${shippingInfo.block}`,
+                    city: shippingInfo.city,
+                    state: shippingInfo.governorate,
+                    postcode: 'KW',
+                    country: 'KW'
+                },
+                line_items: cartItems.map(item => ({
+                    product_id: item.id,
+                    quantity: item.quantity
+                }))
             };
 
-            // Persistence logic
+            // 2. Create Order in WooCommerce
+            const result = await api.createOrder(wooOrderData);
+            const orderId = result.id;
+
+            // Persistence for user
             if (saveAddressChecked) {
                 await saveAddress({
                     id: Date.now(),
@@ -136,21 +190,38 @@ export default function CheckoutScreen() {
                 });
             }
 
-            if (saveCardChecked && paymentMethod === 'card' && cardInfo.number) {
-                const last4 = cardInfo.number.slice(-4);
-                await savePaymentMethod({
-                    id: Date.now() + 1,
-                    number: "**** **** **** " + last4,
-                    raw: cardInfo.number
-                });
-            }
+            if (paymentMethod === 'cod') {
+                // Success for COD
+                await addOrder({ ...result, id: orderId.toString(), items: [...cartItems], date: new Date().toISOString() });
+                clearCart();
+                setIsProcessing(false);
+                router.replace('/checkout/success');
+            } else {
+                // 3. Initiate Payment for Card/KNET
+                const paymentData = {
+                    customerName: shippingInfo.fullName,
+                    amount: finalTotal,
+                    email: user?.email || 'guest@kataraa.com',
+                    mobile: shippingInfo.phone,
+                    orderId: orderId.toString()
+                };
 
-            await addOrder(orderData);
-            clearCart();
-            setIsProcessing(false);
-            router.replace('/checkout/success');
+                const paymentResponse = await PaymentService.initiatePayment(paymentData);
+
+                if (paymentResponse.success) {
+                    setPendingOrderId(orderId.toString());
+                    // 4. Redirect to Payment Gateway
+                    if (paymentResponse.paymentUrl) {
+                        Linking.openURL(paymentResponse.paymentUrl);
+                    }
+                } else {
+                    Alert.alert(t('error') || 'Error', paymentResponse.error || 'Payment failed to initiate');
+                    setIsProcessing(false);
+                }
+            }
         } catch (error) {
             console.error('Order failed:', error);
+            Alert.alert(t('error') || 'Error', t('failedToPlaceOrder') || 'Failed to place order. Please try again.');
             setIsProcessing(false);
         }
     };

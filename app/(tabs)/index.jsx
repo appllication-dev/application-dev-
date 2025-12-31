@@ -5,7 +5,7 @@
  * الهدف: تجربة فاخرة كونية تحس المستخدمة أنها داخلة لعالم نادر وراقي
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ImageBackground,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -35,21 +36,23 @@ import Animated, {
 } from 'react-native-reanimated';
 
 // Services & Context
-import api from '../services/api';
-import { useCart } from '../context/CartContext';
-import { useCartAnimation } from '../context/CartAnimationContext';
-import { useFavorites } from '../context/FavoritesContext';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
+import api from '../../src/services/api';
+import { useCart } from '../../src/context/CartContext';
+import { useCartAnimation } from '../../src/context/CartAnimationContext';
+import { useFavorites } from '../../src/context/FavoritesContext';
+import { useTheme } from '../../src/context/ThemeContext';
+import { useNotifications } from '../../src/context/NotificationContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 // Components
-import SearchHeader from '../components/SearchHeader';
-import ProductCardSwipeable from '../components/ProductCardSwipeable';
-import DrawerMenu from '../components/DrawerMenu';
-import VoiceSearchButton from '../components/VoiceSearchButton';
+import SearchHeader from '../../src/components/SearchHeader';
+import ProductCardSwipeable from '../../src/components/ProductCardSwipeable';
+import DrawerMenu from '../../src/components/DrawerMenu';
+import VoiceSearchButton from '../../src/components/VoiceSearchButton';
+import { ProductSkeleton, CategorySkeleton, BannerSkeleton } from '../../src/components/SkeletonLoader';
 
 // Theme
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../theme/colors';
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../../src/theme/colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -232,6 +235,10 @@ const ProductCarousel = React.memo(({ products, onProductPress, onAddToCart, onF
     showsHorizontalScrollIndicator={false}
     contentContainerStyle={styles.carouselContainer}
     keyExtractor={(item) => item.id.toString()}
+    initialNumToRender={3}
+    maxToRenderPerBatch={2}
+    windowSize={5}
+    removeClippedSubviews={Platform.OS === 'android'}
     renderItem={({ item }) => (
       <ProductCardSwipeable
         item={item}
@@ -334,7 +341,6 @@ const WhyShopWithUs = ({ theme, styles, t, isDark }) => {
 // ============================================
 // 📱 MAIN HOME SCREEN
 // ============================================
-import { useTranslation } from '../hooks/useTranslation';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -421,21 +427,11 @@ export default function HomeScreen() {
     });
   }, [toggleFavorite]);
 
-  // Filter functions
-  const getSaleProducts = () => products.filter(p => p.on_sale).slice(0, 12);
-  const getNewArrivals = () => products.slice(0, 12);
-  const getFeaturedProducts = () => products.filter(p => p.featured).slice(0, 12);
-  const getPopularProducts = () => [...products].sort((a, b) => (b.total_sales || 0) - (a.total_sales || 0)).slice(0, 12);
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <View style={styles.loadingGlow} />
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textMuted }]}>{t('loadingMagic')}</Text>
-      </View>
-    );
-  }
+  // Memoized Filter functions
+  const saleProducts = useMemo(() => products.filter(p => p.on_sale).slice(0, 12), [products]);
+  const newArrivals = useMemo(() => products.slice(0, 12), [products]);
+  const featuredProducts = useMemo(() => products.filter(p => p.featured).slice(0, 12), [products]);
+  const popularProducts = useMemo(() => [...products].sort((a, b) => (b.total_sales || 0) - (a.total_sales || 0)).slice(0, 12), [products]);
 
   return (
     <View style={styles.container}>
@@ -465,13 +461,13 @@ export default function HomeScreen() {
         }
       >
         {/* 🌙 Cosmic Hero */}
-        <CosmicHero onShopNow={() => router.push('/products')} theme={theme} styles={styles} t={t} isDark={isDark} />
+        {loading ? <BannerSkeleton /> : <CosmicHero onShopNow={() => router.push('/products')} theme={theme} styles={styles} t={t} isDark={isDark} />}
 
         {/* 💎 Shop by Skin Type */}
         <SkinTypeSection onSelect={(type) => router.push(`/products?skin=${type.id}`)} theme={theme} styles={styles} t={t} isDark={isDark} />
 
         {/* ✨ Promo Banner */}
-        <CosmicPromoBanner onPress={() => router.push('/products?sale=true')} styles={styles} theme={theme} t={t} isDark={isDark} />
+        {loading ? <BannerSkeleton /> : <CosmicPromoBanner onPress={() => router.push('/products?sale=true')} styles={styles} theme={theme} t={t} isDark={isDark} />}
 
         {/* 🆕 New Arrivals */}
         <View style={styles.section}>
@@ -483,14 +479,20 @@ export default function HomeScreen() {
             styles={styles}
             t={t}
           />
-          <ProductCarousel
-            products={getNewArrivals()}
-            onProductPress={handleProductPress}
-            onAddToCart={handleAddToCart}
-            onFavorite={handleFavorite}
-            isFavorite={isFavorite}
-            styles={styles}
-          />
+          {loading ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
+              {[1, 2, 3, 4].map(i => <ProductSkeleton key={i} />)}
+            </ScrollView>
+          ) : (
+            <ProductCarousel
+              products={newArrivals}
+              onProductPress={handleProductPress}
+              onAddToCart={handleAddToCart}
+              onFavorite={handleFavorite}
+              isFavorite={isFavorite}
+              styles={styles}
+            />
+          )}
         </View>
 
         {/* 🔥 On Sale */}
@@ -503,25 +505,39 @@ export default function HomeScreen() {
             styles={styles}
             t={t}
           />
-          <ProductCarousel
-            products={getSaleProducts()}
-            onProductPress={handleProductPress}
-            onAddToCart={handleAddToCart}
-            onFavorite={handleFavorite}
-            isFavorite={isFavorite}
-            styles={styles}
-          />
+          {loading ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
+              {[1, 2, 3, 4].map(i => <ProductSkeleton key={i} />)}
+            </ScrollView>
+          ) : (
+            <ProductCarousel
+              products={saleProducts}
+              onProductPress={handleProductPress}
+              onAddToCart={handleAddToCart}
+              onFavorite={handleFavorite}
+              isFavorite={isFavorite}
+              styles={styles}
+            />
+          )}
         </View>
 
         {/* 📦 Shop by Category */}
-        <CategoryGrid
-          categories={categories}
-          onSelect={(cat) => router.push(`/products?category=${cat.id}`)}
-          styles={styles}
-          theme={theme}
-          t={t}
-          isDark={isDark}
-        />
+        {loading ? (
+          <View style={styles.categorySection}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
+              {[1, 2, 3, 4, 5].map(i => <CategorySkeleton key={i} />)}
+            </ScrollView>
+          </View>
+        ) : (
+          <CategoryGrid
+            categories={categories}
+            onSelect={(cat) => router.push(`/products?category=${cat.id}`)}
+            styles={styles}
+            theme={theme}
+            t={t}
+            isDark={isDark}
+          />
+        )}
 
         {/* ⭐ Popular Products */}
         <View style={styles.section}>
@@ -533,14 +549,20 @@ export default function HomeScreen() {
             styles={styles}
             t={t}
           />
-          <ProductCarousel
-            products={getPopularProducts()}
-            onProductPress={handleProductPress}
-            onAddToCart={handleAddToCart}
-            onFavorite={handleFavorite}
-            isFavorite={isFavorite}
-            styles={styles}
-          />
+          {loading ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
+              {[1, 2, 3, 4].map(i => <ProductSkeleton key={i} />)}
+            </ScrollView>
+          ) : (
+            <ProductCarousel
+              products={popularProducts}
+              onProductPress={handleProductPress}
+              onAddToCart={handleAddToCart}
+              onFavorite={handleFavorite}
+              isFavorite={isFavorite}
+              styles={styles}
+            />
+          )}
         </View>
 
         {/* 🌟 Why Shop With Us */}
@@ -556,14 +578,20 @@ export default function HomeScreen() {
             styles={styles}
             t={t}
           />
-          <ProductCarousel
-            products={products.slice(12, 24)}
-            onProductPress={handleProductPress}
-            onAddToCart={handleAddToCart}
-            onFavorite={handleFavorite}
-            isFavorite={isFavorite}
-            styles={styles}
-          />
+          {loading ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
+              {[1, 2, 3, 4].map(i => <ProductSkeleton key={i} />)}
+            </ScrollView>
+          ) : (
+            <ProductCarousel
+              products={products.slice(12, 24)}
+              onProductPress={handleProductPress}
+              onAddToCart={handleAddToCart}
+              onFavorite={handleFavorite}
+              isFavorite={isFavorite}
+              styles={styles}
+            />
+          )}
         </View>
 
         {/* Newsletter CTA - Glass Style */}

@@ -51,7 +51,10 @@ export default function ProductCardCinematic({
     index = 0,
 }) {
     const { t } = useTranslation();
-    const imageUrl = item.images?.[0]?.src || 'https://via.placeholder.com/200';
+    const imageSource = item.images?.[0]?.src
+        ? { uri: item.images[0].src }
+        : require('../../assets/images/placeholder.png');
+
     const onSale = item.on_sale && item.regular_price && item.sale_price;
     const discount = onSale
         ? Math.round((1 - item.sale_price / item.regular_price) * 100)
@@ -125,7 +128,7 @@ export default function ProductCardCinematic({
                 {/* Image Container */}
                 <View style={styles.imageContainer}>
                     <Image
-                        source={{ uri: imageUrl }}
+                        source={imageSource}
                         style={styles.image}
                         resizeMode="cover"
                     />

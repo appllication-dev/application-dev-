@@ -1,10 +1,10 @@
 /**
  * Video Promo Banner - Kataraa
  * Banner with video/image support and "Shop Now" button
- * Uses expo-av for video playback
+ * Uses expo-video for video playback
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -13,7 +13,7 @@ import {
     Image,
     Dimensions,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../theme/colors';
@@ -38,16 +38,22 @@ export default function PromoBanner({
     const activeSubtitle = subtitle || t('discoverLatest');
     const activeButtonText = buttonText || t('shopNow');
     const activeBadge = badge || t('fresh');
-    const videoRef = useRef(null);
-    const [isVideoLoaded, setIsVideoLoaded] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
 
-    const handleVideoLoad = () => {
-        setIsVideoLoaded(true);
-    };
+    // expo-video player hook
+    const player = useVideoPlayer(videoUrl || null, (player) => {
+        if (videoUrl) {
+            player.loop = true;
+            player.muted = true;
+            player.play();
+        }
+    });
 
     const toggleMute = () => {
-        setIsMuted(!isMuted);
+        if (player) {
+            player.muted = !isMuted;
+            setIsMuted(!isMuted);
+        }
     };
 
     return (
@@ -57,16 +63,12 @@ export default function PromoBanner({
             activeOpacity={0.95}
         >
             {/* Background Video or Image */}
-            {videoUrl ? (
-                <Video
-                    ref={videoRef}
-                    source={{ uri: videoUrl }}
+            {videoUrl && player ? (
+                <VideoView
+                    player={player}
                     style={styles.media}
-                    resizeMode={ResizeMode.COVER}
-                    shouldPlay
-                    isLooping
-                    isMuted={isMuted}
-                    onLoad={handleVideoLoad}
+                    contentFit="cover"
+                    nativeControls={false}
                 />
             ) : imageUrl ? (
                 <Image
@@ -111,7 +113,7 @@ export default function PromoBanner({
             </View>
 
             {/* Video Controls */}
-            {videoUrl && (
+            {videoUrl && player && (
                 <View style={styles.videoControls}>
                     {/* Play Progress Bar */}
                     <View style={styles.progressContainer}>

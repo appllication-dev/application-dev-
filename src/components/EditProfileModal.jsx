@@ -8,8 +8,9 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Alert,
-    Image
+    // Image
 } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -86,7 +87,12 @@ export default function EditProfileModal({ visible, onClose }) {
                         <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
                             <View style={[styles.imageWrapper, { borderColor: theme.primary + '30' }]}>
                                 {image ? (
-                                    <Image source={{ uri: image }} style={styles.profileImage} />
+                                    <Image
+                                        source={image}
+                                        style={styles.profileImage}
+                                        contentFit="cover"
+                                        transition={200}
+                                    />
                                 ) : (
                                     <View style={[styles.placeholderImage, { backgroundColor: theme.primary + '10' }]}>
                                         <Ionicons name="camera" size={30} color={theme.primary} />

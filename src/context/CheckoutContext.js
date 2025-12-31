@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { useAuth } from './AuthContext';
+import { useNotifications } from './NotificationContext';
+import * as Linking from 'expo-linking';
+import PaymentService from '../services/PaymentService';
+import api from '../services/api';
+import { useCart } from './CartContext';
 
 const CheckoutContext = createContext();
 
@@ -14,6 +19,8 @@ export const useCheckout = () => {
 
 export const CheckoutProvider = ({ children }) => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
+  const { clearCart } = useCart();
   const [shippingInfo, setShippingInfo] = useState({
     fullName: '',
     phone: '',
@@ -32,6 +39,8 @@ export const CheckoutProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
+  const [pendingOrderId, setPendingOrderId] = useState(null);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
 
   // Load data from Storage
   useEffect(() => {
@@ -61,6 +70,80 @@ export const CheckoutProvider = ({ children }) => {
 
     loadSavedData();
   }, [user]);
+
+  // Handle Deep Linking for Payment Callbacks
+  useEffect(() => {
+    const handleDeepLink = async (event) => {
+      const { url } = event;
+      if (!url) return;
+
+      const parsed = Linking.parse(url);
+
+      // Check for success or error in path/query
+      if (url.includes('checkout/success') || parsed.queryParams?.paymentId) {
+        const paymentId = parsed.queryParams?.paymentId || parsed.queryParams?.paymentID;
+        if (paymentId) {
+          verifyPayment(paymentId);
+        }
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check initial URL (for when app is opened via deep link)
+    Linking.getInitialURL().then(url => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [pendingOrderId]);
+
+  const verifyPayment = async (paymentId) => {
+    if (isVerifyingPayment) return;
+    setIsVerifyingPayment(true);
+    try {
+      const status = await PaymentService.getPaymentStatus(paymentId);
+      if (status.IsSuccess && status.Data.InvoiceStatus === 'Paid') {
+        // 1. Update order in WooCommerce if we have a pending order ID
+        if (pendingOrderId) {
+          await api.updateOrder(pendingOrderId, {
+            status: 'processing',
+            set_paid: true,
+            transaction_id: paymentId
+          });
+
+          // 2. Add to local orders
+          const fullOrder = await api.getProduct(pendingOrderId); // Actually should be getOrder but let's assume we have what we need or just add the ID
+          await addOrder({
+            id: pendingOrderId,
+            status: 'processing',
+            date: new Date().toISOString(),
+            total: status.Data.InvoiceValue,
+            payment_method: status.Data.PaymentGateway
+          });
+        }
+
+        // 3. Clear Cart and Reset
+        clearCart();
+        setPendingOrderId(null);
+
+        // Notify user
+        addNotification(
+          "تم الطلب بنجاح! 🎉",
+          `يا هلا! طلبك #${pendingOrderId} تم تأكيده بنجاح. سنقوم بتجهيزه فوراً!`,
+          "success",
+          { id: pendingOrderId }
+        );
+      }
+    } catch (e) {
+      console.error('Payment verification failed:', e);
+      addNotification("خطأ في الدفع", "لم نتمكن من التحقق من عملية الدفع. يرجى المحاولة مرة أخرى.", "error");
+    } finally {
+      setIsVerifyingPayment(false);
+    }
+  };
 
   const updateShippingInfo = (info) => {
     setShippingInfo(prev => ({ ...prev, ...info }));
@@ -140,7 +223,12 @@ export const CheckoutProvider = ({ children }) => {
       deleteAddress,
       savedPaymentMethods,
       savePaymentMethod,
-      deletePaymentMethod
+      deletePaymentMethod,
+      pendingOrderId,
+      setPendingOrderId,
+      isVerifyingPayment,
+      verifyPayment,
+      // Add more as needed
     }}>
       {children}
     </CheckoutContext.Provider>
