@@ -1,12 +1,11 @@
 /**
- * Product Details Screen - Kataraa Cinematic 🎬✨
- * Premium beauty product page with Blush Pink theme
+ * Product Details - Cosmic Museum Gallery
+ * 🌙 Premium beauty product page with floating glass panels
  */
 
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Image,
@@ -14,57 +13,57 @@ import {
   ActivityIndicator,
   Dimensions,
   Linking,
-  ToastAndroid,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withSequence,
-  withTiming,
+  FadeInDown,
 } from 'react-native-reanimated';
-import api from '../services/api';
-import { useCart } from '../context/CartContext';
-import { useFavorites } from '../context/FavoritesContext';
+import { useTheme } from '../../src/context/ThemeContext';
+import api from '../../src/services/api';
+import { useCart } from '../../src/context/CartContext';
+import { useFavorites } from '../../src/context/FavoritesContext';
+import { useAuth } from '../../src/context/AuthContext';
+import AddToCartSuccess from '../../src/components/AddToCartSuccess';
+import ReviewSection from '../../src/components/ReviewSection';
+import socialService from '../../src/services/socialService';
+import { useTranslation } from '../../src/hooks/useTranslation';
+import { Surface, Text, Button, IconButton } from '../../src/components/ui'; // UI Kit
 
-const { width, height } = Dimensions.get('window');
-
-// Kataraa Blush Pink Theme
-const COLORS = {
-  primary: '#F5B5C8',
-  secondary: '#FFDAB9',
-  accent: '#B76E79',
-  background: '#FFF9F5',
-  textPrimary: '#3D2314',
-  textSecondary: '#A67B7B',
-  success: '#10B981',
-  white: '#FFFFFF',
-};
+const { width } = Dimensions.get('window');
 
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { addToCart, cartItems } = useCart();
+  const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  const { tokens, isDark } = useTheme(); // Use tokens
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [showAddedMessage, setShowAddedMessage] = useState(false);
+  const [publicLikes, setPublicLikes] = useState(0);
 
   // Animation values
-  const cartBounce = useSharedValue(1);
-  const successOpacity = useSharedValue(0);
   const heartScale = useSharedValue(1);
 
   useEffect(() => {
     fetchProduct();
+    // Subscribe to public likes
+    const unsubscribeLikes = socialService.subscribeToProductStats(id, (count) => {
+      setPublicLikes(count);
+    });
+    return () => unsubscribeLikes();
   }, [id]);
 
   const fetchProduct = async () => {
@@ -79,13 +78,11 @@ export default function ProductDetailsScreen() {
   };
 
   const formatPrice = (price) => {
-    return `${parseFloat(price || 0).toFixed(3)} د.ك`;
+    return `${parseFloat(price || 0).toFixed(3)} ${t('currency')}`;
   };
 
   const handleAddToCart = () => {
     if (!product) return;
-
-    // Add to cart
     addToCart({
       id: product.id,
       name: product.name,
@@ -93,108 +90,60 @@ export default function ProductDetailsScreen() {
       image: product.images?.[0]?.src,
       quantity,
     });
-
-    // Animate success
-    successOpacity.value = withSequence(
-      withTiming(1, { duration: 200 }),
-      withTiming(1, { duration: 1500 }),
-      withTiming(0, { duration: 300 })
-    );
-
-    cartBounce.value = withSequence(
-      withSpring(1.3, { damping: 8 }),
-      withSpring(1, { damping: 10 })
-    );
-
-    // Show toast on Android
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('✅ تمت الإضافة للسلة!', ToastAndroid.SHORT);
-    }
-
-    // Show visual feedback
     setShowAddedMessage(true);
-    setTimeout(() => setShowAddedMessage(false), 2000);
   };
 
   const handleBuyNow = () => {
     if (!product) return;
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.sale_price || product.price,
-      image: product.images?.[0]?.src,
-      quantity,
-    });
+    handleAddToCart();
     router.push('/checkout/shipping');
   };
 
-  const handleHeartPress = () => {
+  const handleHeartPress = async () => {
     heartScale.value = withSequence(
       withSpring(1.4, { damping: 6 }),
       withSpring(1, { damping: 10 })
     );
+
+    const wasFavorite = isFavorite(product.id);
+
     toggleFavorite({
       id: product.id,
       name: product.name,
       price: product.price,
       image: product.images?.[0]?.src,
     });
+
+    if (user) {
+      try {
+        await socialService.togglePublicLike(product.id, user.uid, !wasFavorite);
+      } catch (error) {
+        console.error('Error toggling public like:', error);
+      }
+    }
   };
 
   const handleWhatsAppOrder = () => {
-    // Check if cart has items
-    if (cartItems.length === 0 && !product) return;
-
-    let message = 'مرحباً! أرغب بطلب المنتجات التالية:\n\n';
-    let grandTotal = 0;
-
-    // If cart has items, send entire cart
-    if (cartItems.length > 0) {
-      cartItems.forEach((item, index) => {
-        const itemPrice = parseFloat(item.price || 0);
-        const itemTotal = itemPrice * (item.quantity || 1);
-        grandTotal += itemTotal;
-
-        message += `${index + 1}. 📦 *${item.name}*\n`;
-        message += `   💰 السعر: ${itemPrice.toFixed(3)} د.ك\n`;
-        message += `   🔢 الكمية: ${item.quantity || 1}\n`;
-        message += `   💵 المجموع: ${itemTotal.toFixed(3)} د.ك\n\n`;
-      });
-
-      message += `━━━━━━━━━━━━━\n`;
-      message += `🛒 *المجموع الكلي: ${grandTotal.toFixed(3)} د.ك*\n\n`;
-      message += `شكراً لكم! 💜`;
-    } else {
-      // Fallback to current product if cart is empty
-      const price = product.sale_price || product.price;
-      const totalPrice = (parseFloat(price) * quantity).toFixed(3);
-
-      message = `مرحباً! أرغب بطلب هذا المنتج:\n\n`;
-      message += `📦 *${product.name}*\n`;
-      message += `💰 السعر: ${totalPrice} د.ك\n`;
-      message += `🔢 الكمية: ${quantity}\n\n`;
-      message += `شكراً لكم! 💜`;
-    }
-
+    if (!product) return;
+    const price = product.sale_price || product.price;
+    const totalPrice = (parseFloat(price) * quantity).toFixed(3);
+    const message = `👋 ${t('whatsappMessage')}\n📦 *${product.name}*\n💰 ${t('price')}: ${totalPrice} ${t('currency')}\n🔢 ${t('quantity')}: ${quantity}\n\n${t('thankYou')} 💜`;
     const whatsappUrl = `https://wa.me/9659910326?text=${encodeURIComponent(message)}`;
     Linking.openURL(whatsappUrl);
   };
-
-  // Animated styles
-  const successBadgeStyle = useAnimatedStyle(() => ({
-    opacity: successOpacity.value,
-    transform: [{ scale: successOpacity.value }],
-  }));
 
   const heartStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
   }));
 
+  const styles = getStyles(tokens, isDark);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>جاري التحميل...</Text>
+        <View style={styles.loadingGlow} />
+        <ActivityIndicator size="large" color={tokens.colors.primary} />
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
@@ -202,11 +151,13 @@ export default function ProductDetailsScreen() {
   if (!product) {
     return (
       <View style={styles.loadingContainer}>
-        <Ionicons name="alert-circle" size={60} color={COLORS.secondary} />
-        <Text style={styles.errorText}>المنتج غير موجود</Text>
-        <TouchableOpacity style={styles.backBtnError} onPress={() => router.back()}>
-          <Text style={styles.backBtnText}>العودة</Text>
-        </TouchableOpacity>
+        <Ionicons name="alert-circle" size={60} color={tokens.colors.primary} />
+        <Text style={styles.loadingText}>{t('productNotFound')}</Text>
+        <Button
+          title={t('back')}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
+          variant="ghost"
+        />
       </View>
     );
   }
@@ -214,490 +165,379 @@ export default function ProductDetailsScreen() {
   const images = product.images || [];
   const isLiked = isFavorite(product.id);
   const onSale = product.on_sale && product.regular_price;
-  const discount = onSale
-    ? Math.round((1 - product.sale_price / product.regular_price) * 100)
-    : 0;
+  const discount = onSale ? Math.round((1 - product.sale_price / product.regular_price) * 100) : 0;
   const isInStock = product.stock_status === 'instock' || product.in_stock === true;
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Image Section - New Blush Pink Design */}
-        <View style={styles.imageSection}>
-          <LinearGradient
-            colors={[COLORS.primary, '#FFD6E0', COLORS.background]}
-            style={styles.imageGradient}
-          >
-            <SafeAreaView style={styles.headerRow}>
-              <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.headerBtn} onPress={handleHeartPress}>
-                <Animated.View style={heartStyle}>
-                  <Ionicons
-                    name={isLiked ? 'heart' : 'heart-outline'}
-                    size={24}
-                    color={isLiked ? '#EF4444' : COLORS.textPrimary}
-                  />
-                </Animated.View>
-              </TouchableOpacity>
-            </SafeAreaView>
+      {/* Cosmic Background Orbs */}
+      <View style={styles.bgOrb1} />
+      <View style={styles.bgOrb2} />
 
-            <View style={styles.imageContainer}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Header Actions */}
+        <SafeAreaView style={styles.headerRow}>
+          <IconButton
+            icon="arrow-back"
+            size="md"
+            variant="glass"
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
+          />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Animated.View style={heartStyle}>
+              <IconButton
+                icon={isLiked ? 'heart' : 'heart-outline'}
+                size="md"
+                variant="glass"
+                onPress={handleHeartPress}
+                iconColor={isLiked ? tokens.colors.error : tokens.colors.text}
+              />
+            </Animated.View>
+            {publicLikes > 0 && (
+              <View style={[styles.likeBadge, { backgroundColor: tokens.colors.primary }]}>
+                <Text style={styles.likeBadgeText}>{publicLikes}</Text>
+              </View>
+            )}
+          </View>
+        </SafeAreaView>
+
+        {/* Hero Image - Museum Gallery Style */}
+        <Animated.View entering={FadeInDown.duration(800)} style={styles.heroSection}>
+          <Surface variant="glass" radius="xxl" style={styles.imageFrame} padding="none">
+            {/* Inner padding applied via wrapper View or style overrides if needed, here Surface glass handles background */}
+            <View style={{ padding: 20 }}>
               <Image
-                source={{ uri: images[selectedImage]?.src || 'https://via.placeholder.com/400' }}
+                source={images[selectedImage]?.src ? { uri: images[selectedImage].src } : require('../../assets/images/placeholder.png')}
                 style={styles.mainImage}
                 resizeMode="contain"
               />
             </View>
+          </Surface>
 
-            {onSale && (
-              <View style={styles.saleBadge}>
-                <Text style={styles.saleText}>خصم {discount}%</Text>
-              </View>
-            )}
-          </LinearGradient>
+          {onSale && (
+            <Surface variant="glass" style={styles.saleBadge} padding="sm" intensity={80}>
+              <Text variant="caption" weight="bold" style={{ color: '#FFF' }}>
+                ✦ {t('discountOff', { percent: discount })}
+              </Text>
+            </Surface>
+          )}
 
           {/* Thumbnails */}
           {images.length > 1 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnails}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbList}>
               {images.map((img, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={[styles.thumb, selectedImage === index && styles.thumbActive]}
                   onPress={() => setSelectedImage(index)}
                 >
-                  <Image source={{ uri: img.src }} style={styles.thumbImage} />
+                  <Surface
+                    variant={isDark ? "glass" : "elevated"}
+                    padding="xs"
+                    radius="lg"
+                    style={[styles.thumb, selectedImage === index && { borderColor: tokens.colors.primary, borderWidth: 2 }]}
+                  >
+                    <Image source={{ uri: img.src }} style={styles.thumbImage} />
+                  </Surface>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           )}
-        </View>
+        </Animated.View>
 
-        {/* Product Info Section */}
-        <View style={styles.infoSection}>
-          {/* Stock Badge */}
-          <View style={[styles.stockBadge, !isInStock && styles.outOfStock]}>
-            <Ionicons
-              name={isInStock ? 'checkmark-circle' : 'close-circle'}
-              size={16}
-              color={isInStock ? COLORS.success : '#EF4444'}
-            />
-            <Text style={[styles.stockText, !isInStock && styles.outOfStockText]}>
-              {isInStock ? 'متوفر' : 'غير متوفر'}
-            </Text>
-          </View>
-
-          {/* Product Name */}
-          <Text style={styles.productName}>{product.name}</Text>
-
-          {/* Price Section */}
-          <View style={styles.priceSection}>
-            {onSale ? (
-              <>
-                <Text style={styles.salePrice}>{formatPrice(product.sale_price)}</Text>
-                <Text style={styles.oldPrice}>{formatPrice(product.regular_price)}</Text>
-              </>
-            ) : (
-              <Text style={styles.price}>{formatPrice(product.price)}</Text>
-            )}
-          </View>
-
-          {/* Quantity Selector */}
-          <View style={styles.quantitySection}>
-            <Text style={styles.quantityLabel}>الكمية</Text>
-            <View style={styles.quantityControl}>
-              <TouchableOpacity
-                style={styles.quantityBtn}
-                onPress={() => setQuantity(Math.max(1, quantity - 1))}
-              >
-                <Ionicons name="remove" size={20} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-              <Text style={styles.quantityValue}>{quantity}</Text>
-              <TouchableOpacity
-                style={styles.quantityBtn}
-                onPress={() => setQuantity(quantity + 1)}
-              >
-                <Ionicons name="add" size={20} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Description */}
-          {product.short_description && (
-            <View style={styles.descriptionSection}>
-              <Text style={styles.descriptionTitle}>الوصف</Text>
-              <Text style={styles.descriptionText}>
-                {product.short_description.replace(/<[^>]*>/g, '')}
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          {/* Title Panel */}
+          <Animated.View entering={FadeInDown.delay(200).springify()}>
+            <View style={styles.titleTop}>
+              <View style={[styles.stockIndicator, { backgroundColor: isInStock ? '#7BB4A3' : '#D4A5A5' }]} />
+              <Text variant="label" style={{ color: isInStock ? '#7BB4A3' : '#D4A5A5', letterSpacing: 1.5 }}>
+                {isInStock ? t('inStock') : t('outOfStock')}
               </Text>
             </View>
+            <Text variant="display" weight="light" style={{ lineHeight: 38 }}>{product.name}</Text>
+          </Animated.View>
+
+          {/* Price Panel */}
+          <Animated.View entering={FadeInDown.delay(300).springify()} style={{ marginVertical: 10 }}>
+            <Surface variant="glass" radius="xl">
+              <View style={styles.priceRow}>
+                {onSale ? (
+                  <View style={styles.salePriceContainer}>
+                    <Text variant="title" style={{ color: '#7BB4A3' }}>{formatPrice(product.sale_price)}</Text>
+                    <Text variant="body" style={styles.oldPriceVal}>{formatPrice(product.regular_price)}</Text>
+                  </View>
+                ) : (
+                  <Text variant="title" style={{ color: tokens.colors.primary }}>{formatPrice(product.price)}</Text>
+                )}
+
+                {/* Quantity */}
+                <View style={[styles.quantityWidget, { backgroundColor: tokens.colors.primary + '15' }]}>
+                  <TouchableOpacity onPress={() => setQuantity(Math.max(1, quantity - 1))} style={[styles.qBtn, { backgroundColor: tokens.colors.backgroundCard }]}>
+                    <Ionicons name="remove" size={18} color={tokens.colors.primary} />
+                  </TouchableOpacity>
+                  <Text variant="title" style={{ minWidth: 24, textAlign: 'center' }}>{quantity}</Text>
+                  <TouchableOpacity onPress={() => setQuantity(quantity + 1)} style={[styles.qBtn, { backgroundColor: tokens.colors.backgroundCard }]}>
+                    <Ionicons name="add" size={18} color={tokens.colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Surface>
+          </Animated.View>
+
+          {/* Description Panel */}
+          {product.short_description && (
+            <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.descPanel}>
+              <Text variant="label" style={{ color: tokens.colors.textMuted }}>{t('description')}</Text>
+              <Surface variant="glass" radius="lg">
+                <Text variant="body" style={{ color: tokens.colors.textSecondary, lineHeight: 24 }}>
+                  {product.short_description.replace(/<[^>]*>/g, '')}
+                </Text>
+              </Surface>
+            </Animated.View>
           )}
+
+          {/* Reviews Section */}
+          <ReviewSection
+            productId={id}
+            user={user}
+            theme={tokens.colors} // Pass colors object
+            isDark={isDark}
+            t={t}
+          />
+
+          <View style={styles.extraSpacing} />
         </View>
       </ScrollView>
 
-      {/* Bottom Action Bar */}
-      <View style={styles.bottomBar}>
-        {/* Add to Cart Button */}
-        <TouchableOpacity
-          style={styles.addToCartBtn}
-          onPress={handleAddToCart}
-          disabled={!isInStock}
-        >
-          <Ionicons name="cart-outline" size={22} color={COLORS.accent} />
-          <Text style={styles.addToCartText}>أضف للسلة</Text>
-        </TouchableOpacity>
+      {/* Floating Bottom Bar */}
+      <View style={styles.floatingBottomBar}>
+        <Surface variant="glass" radius="xxl" style={styles.bottomBarBlur} intensity={isDark ? 50 : 80}>
+          <View style={styles.actionsRow}>
+            <Button
+              title={t('addToCart')}
+              variant="secondary"
+              icon={<Ionicons name="cart-outline" size={20} color={tokens.colors.primary} />}
+              onPress={handleAddToCart}
+              disabled={!isInStock}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title={t('buyNow')}
+              variant="primary"
+              icon={<Ionicons name="flash" size={20} color="#FFF" />}
+              onPress={handleBuyNow}
+              disabled={!isInStock}
+              style={{ flex: 1.2 }}
+            />
+          </View>
 
-        {/* Buy Now Button */}
-        <TouchableOpacity
-          style={[styles.buyNowBtn, !isInStock && styles.btnDisabled]}
-          onPress={handleBuyNow}
-          disabled={!isInStock}
-        >
-          <LinearGradient
-            colors={isInStock ? [COLORS.primary, COLORS.accent] : ['#ccc', '#999']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.buyNowGradient}
-          >
-            <Ionicons name="flash" size={20} color="#fff" />
-            <Text style={styles.buyNowText}>اشتري الآن</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.whatsappFloat} onPress={handleWhatsAppOrder}>
+            <LinearGradient colors={['#25D366', '#128C7E']} style={styles.waGradient}>
+              <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
+              <Text variant="label" style={{ color: '#FFF' }}>
+                {t('orderViaWhatsapp', { price: (parseFloat(product.sale_price || product.price) * quantity).toFixed(3) + ' ' + t('currency') })}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Surface>
       </View>
 
-      {/* WhatsApp Button */}
-      <TouchableOpacity style={styles.whatsappBtn} onPress={handleWhatsAppOrder}>
-        <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-        <Text style={styles.whatsappText}>
-          {(parseFloat(product.sale_price || product.price) * quantity).toFixed(3)} د.ك - اطلب عبر واتساب
-        </Text>
-      </TouchableOpacity>
-
-      {/* Success Message Overlay */}
-      <Animated.View style={[styles.successOverlay, successBadgeStyle]} pointerEvents="none">
-        <View style={styles.successBadge}>
-          <Ionicons name="checkmark-circle" size={50} color={COLORS.success} />
-          <Text style={styles.successText}>تمت الإضافة! ✨</Text>
-        </View>
-      </Animated.View>
+      {/* Success Modal */}
+      <AddToCartSuccess
+        visible={showAddedMessage}
+        onClose={() => setShowAddedMessage(false)}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (tokens, isDark) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: tokens.colors.background,
   },
+  bgOrb1: {
+    position: 'absolute',
+    top: -80,
+    right: -80,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: tokens.colors.primary + '15',
+    zIndex: -1,
+  },
+  bgOrb2: {
+    position: 'absolute',
+    bottom: 150,
+    left: -80,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: tokens.colors.accent + '10',
+    zIndex: -1,
+  },
+  scrollContent: { paddingBottom: 240 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: tokens.colors.background,
+  },
+  loadingGlow: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: tokens.colors.primary + '20', // Opacity
   },
   loadingText: {
-    marginTop: 12,
-    color: COLORS.textSecondary,
-    fontSize: 14,
-  },
-  errorText: {
     marginTop: 16,
-    fontSize: 18,
-    color: COLORS.textSecondary,
-  },
-  backBtnError: {
-    marginTop: 20,
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    backgroundColor: COLORS.primary,
-    borderRadius: 25,
-  },
-  backBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    marginBottom: 16,
+    color: tokens.colors.textMuted,
+    letterSpacing: 0.5,
   },
 
-  // Image Section
-  imageSection: {
-    backgroundColor: COLORS.background,
-  },
-  imageGradient: {
-    paddingBottom: 20,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-  },
+  // Header
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 10,
+    zIndex: 10,
   },
-  headerBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+  likeBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingHorizontal: 4,
   },
-  imageContainer: {
+  likeBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+
+  // Hero Section
+  heroSection: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  imageFrame: {
+    width: width * 0.88,
+    overflow: 'hidden',
   },
   mainImage: {
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: 20,
+    width: '100%',
+    height: width * 0.85,
   },
   saleBadge: {
     position: 'absolute',
-    top: 100,
-    left: 20,
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 15,
+    top: 16,
+    left: 16,
+    borderRadius: 16,
+    backgroundColor: tokens.colors.error, // or just glass with text
   },
-  saleText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  thumbnails: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  thumbList: {
+    paddingHorizontal: 24,
+    marginTop: 20,
+    gap: 12,
   },
   thumb: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    marginRight: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderRadius: 18,
     overflow: 'hidden',
-  },
-  thumbActive: {
-    borderColor: COLORS.accent,
+    width: 68,
+    height: 68,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   thumbImage: {
-    width: '100%',
-    height: '100%',
+    width: 60,
+    height: 60,
+    borderRadius: 14,
   },
 
-  // Info Section
-  infoSection: {
-    padding: 20,
+  // Content
+  contentSection: {
+    paddingHorizontal: 24,
+    gap: 20,
   },
-  stockBadge: {
+  titleTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-end',
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 8,
   },
-  outOfStock: {
-    backgroundColor: '#FEE2E2',
+  stockIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  stockText: {
-    color: COLORS.success,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  outOfStockText: {
-    color: '#EF4444',
-  },
-  productName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    textAlign: 'right',
-    marginBottom: 12,
-    lineHeight: 32,
-  },
-  priceSection: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
-  },
-  price: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.accent,
-  },
-  salePrice: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.success,
-  },
-  oldPrice: {
-    fontSize: 18,
-    color: COLORS.textSecondary,
-    textDecorationLine: 'line-through',
-  },
-  quantitySection: {
+  priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
   },
-  quantityLabel: {
-    fontSize: 16,
-    color: COLORS.textPrimary,
-    fontWeight: '600',
-  },
-  quantityControl: {
+  salePriceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
-  quantityBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
+  oldPriceVal: {
+    color: tokens.colors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  quantityWidget: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 6,
+    borderRadius: 20,
+    gap: 14,
+  },
+  qBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
   },
-  quantityValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    minWidth: 30,
-    textAlign: 'center',
+  descPanel: {
+    gap: 12,
   },
-  descriptionSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 120,
-  },
-  descriptionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    textAlign: 'right',
-    marginBottom: 10,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'right',
-    lineHeight: 22,
+  extraSpacing: {
+    height: 40,
   },
 
-  // Bottom Bar
-  bottomBar: {
+  // Floating Bottom Bar
+  floatingBottomBar: {
     position: 'absolute',
-    bottom: 70,
-    left: 16,
-    right: 16,
+    bottom: 24,
+    left: 20,
+    right: 20,
+    elevation: 0, // Surface handles elevation
+  },
+  bottomBarBlur: {
+    padding: 16,
+    gap: 14,
+  },
+  actionsRow: {
     flexDirection: 'row',
     gap: 12,
   },
-  addToCartBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 14,
-    borderRadius: 16,
-    gap: 8,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  addToCartText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORS.accent,
-  },
-  buyNowBtn: {
-    flex: 1,
-    borderRadius: 16,
+  whatsappFloat: {
+    borderRadius: 18,
     overflow: 'hidden',
   },
-  buyNowGradient: {
+  waGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
-  },
-  buyNowText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  btnDisabled: {
-    opacity: 0.5,
-  },
-  whatsappBtn: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#25D366',
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 12,
     gap: 10,
-  },
-  whatsappText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-
-  // Success Overlay
-  successOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 249, 245, 0.9)',
-  },
-  successBadge: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 30,
-    borderRadius: 30,
-    shadowColor: COLORS.success,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  successText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.success,
-    marginTop: 10,
   },
 });

@@ -4,31 +4,61 @@
     "slug": "kataraa-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/icon_kataraa.png",
     "scheme": "kataraa",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "jsEngine": "hermes",
+    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash_kataraa.png",
       "resizeMode": "contain",
-      "backgroundColor": "#667eea"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kataraa.app"
+      "bundleIdentifier": "com.kataraa.app",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "السماح للتطبيق بالتعرف على الكلام",
+        "NSMicrophoneUsageDescription": "السماح للتطبيق باستخدام الميكروفون للبحث الصوتي"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/icon_kataraa.png",
         "backgroundColor": "#667eea"
       },
-      "package": "com.kataraa.app"
+      "package": "com.kataraa.app",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "@jamsch/expo-speech-recognition",
+        {
+          "speechRecognitionPermission": "نحتاج إلى إذن للتعرف على الكلام لتمكين البحث الصوتي.",
+          "microphonePermission": "نحتاج إلى إذن للوصول إلى الميكروفون لتمكين البحث الصوتي."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon_kataraa.png",
+          "color": "#667eea"
+        }
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c95b01ab-9fc0-45ed-bf61-aa6b8948c6df"
+      }
     }
   }
 }

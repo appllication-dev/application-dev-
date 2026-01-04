@@ -1,9 +1,10 @@
 /**
  * Products Screen - Kataraa SOKO Style
  * Redesigned products listing with brand sections and improved layout
+ * Dark Mode Supported 🌙
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -14,33 +15,36 @@ import {
     TouchableOpacity,
     Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Services & Context
-import api from '../services/api';
-import { useCart } from '../context/CartContext';
-import { useCartAnimation } from '../context/CartAnimationContext';
-import { useFavorites } from '../context/FavoritesContext';
+import api from '../../src/services/api';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useCart } from '../../src/context/CartContext';
+import { useCartAnimation } from '../../src/context/CartAnimationContext';
+import { useFavorites } from '../../src/context/FavoritesContext';
+import { useTheme } from '../../src/context/ThemeContext';
 
 // Components
-import SearchHeader from '../components/SearchHeader';
-import ProductCardSoko from '../components/ProductCardSoko';
-import BrandSection from '../components/BrandSection';
+import SearchHeader from '../../src/components/SearchHeader';
+import ProductCardSoko from '../../src/components/ProductCardSoko';
+import BrandSection from '../../src/components/BrandSection';
+import { ProductSkeleton, CategorySkeleton } from '../../src/components/SkeletonLoader';
 
-// Theme
-import { COLORS, SPACING, RADIUS, GRADIENTS } from '../theme/colors';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width } = Dimensions.get('window');
 
 export default function ProductsScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { cartItems, addToCart } = useCart();
+    const { cartItems } = useCart();
     const { triggerAddToCart } = useCartAnimation();
     const { toggleFavorite, isFavorite } = useFavorites();
+    const { theme, isDark } = useTheme();
+    const { t } = useTranslation();
+    const styles = getStyles(theme, isDark);
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -67,7 +71,13 @@ export default function ProductsScreen() {
             if (pageNum === 1) {
                 setProducts(data || []);
             } else {
-                setProducts(prev => [...prev, ...(data || [])]);
+                setProducts(prev => {
+                    const combined = [...prev, ...(data || [])];
+                    // Deduplicate by ID
+                    const uniqueMap = new Map();
+                    combined.forEach(item => uniqueMap.set(item.id, item));
+                    return Array.from(uniqueMap.values());
+                });
             }
             setHasMore((data?.length || 0) === 20);
         } catch (error) {
@@ -78,18 +88,41 @@ export default function ProductsScreen() {
     const fetchCategories = async () => {
         try {
             const data = await api.getCategories();
-            setCategories(data?.filter(cat => cat.count > 0) || []);
+            const filtered = data?.filter(cat => cat.count > 0) || [];
+
+            // Priority keywords for categories with custom icons
+            const priorityKeywords = [
+                'skincare', 'العناية بالبشرة', 'acne', 'حب الشباب', 'makeup', 'المكياج',
+                'hair', 'الشعر', 'body', 'الجسم', 'serum', 'السيروم', 'sun', 'شمس',
+                'set', 'مجموعات', 'nail', 'أظافر', 'cleanser', 'منظفات', 'mask',
+                'ماسك', 'cream', 'moist', 'مرطب', 'eye', 'عين', 'lip', 'شفاه',
+                'toner', 'تونر', 'aging', 'تجاعيد'
+            ];
+
+            // Sort: Priority items first
+            const sorted = filtered.sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                const isAPriority = priorityKeywords.some(key => nameA.includes(key));
+                const isBPriority = priorityKeywords.some(key => nameB.includes(key));
+
+                if (isAPriority && !isBPriority) return -1;
+                if (!isAPriority && isBPriority) return 1;
+                return 0;
+            });
+
+            setCategories(sorted);
         } catch (error) {
             console.error('Error fetching categories:', error);
         }
     };
 
-    const handleRefresh = async () => {
+    const handleRefresh = React.useCallback(async () => {
         setRefreshing(true);
         setPage(1);
         await fetchProducts(1, selectedCategory);
         setRefreshing(false);
-    };
+    }, [selectedCategory]);
 
     const handleLoadMore = () => {
         if (hasMore && !loading) {
@@ -99,18 +132,17 @@ export default function ProductsScreen() {
         }
     };
 
-    const handleCategorySelect = async (categoryId) => {
+    const handleCategorySelect = React.useCallback(async (categoryId) => {
         const newCategory = categoryId === selectedCategory ? null : categoryId;
         setSelectedCategory(newCategory);
         setPage(1);
         setLoading(true);
         await fetchProducts(1, newCategory);
         setLoading(false);
-    };
+    }, [selectedCategory]);
 
     const handleSearch = (query) => {
         if (query.trim()) {
-            // Implement search
             api.searchProducts(query).then(results => {
                 setProducts(results || []);
             });
@@ -119,11 +151,11 @@ export default function ProductsScreen() {
         }
     };
 
-    const handleProductPress = (item) => {
+    const handleProductPress = React.useCallback((item) => {
         router.push(`/product/${item.id}`);
-    };
+    }, [router]);
 
-    const handleAddToCart = (item) => {
+    const handleAddToCart = React.useCallback((item) => {
         triggerAddToCart({
             id: item.id,
             name: item.name,
@@ -131,16 +163,16 @@ export default function ProductsScreen() {
             image: item.images?.[0]?.src,
             quantity: 1,
         });
-    };
+    }, [triggerAddToCart]);
 
-    const handleFavorite = (item) => {
+    const handleFavorite = React.useCallback((item) => {
         toggleFavorite({
             id: item.id,
             name: item.name,
             price: item.price,
             image: item.images?.[0]?.src,
         });
-    };
+    }, [toggleFavorite]);
 
     // Group products by category for brand view
     const getProductsByCategory = () => {
@@ -157,42 +189,130 @@ export default function ProductsScreen() {
     };
 
     // Render product for grid view
-    const renderProduct = ({ item }) => (
+    // Render product for grid view
+    const renderProduct = React.useCallback(({ item }) => (
         <View style={styles.gridItem}>
             <ProductCardSoko
                 item={item}
-                onPress={() => handleProductPress(item)}
+                onPress={handleProductPress}
                 onAddToCart={handleAddToCart}
                 onFavorite={handleFavorite}
                 isFavorite={isFavorite(item.id)}
             />
         </View>
-    );
+    ), [handleProductPress, handleAddToCart, handleFavorite, isFavorite, styles.gridItem]);
+
+    // Category Mapping Helper - Enhanced with premium beauty icons
+    const getCategoryDetails = (catName) => {
+        const lowerName = catName?.toLowerCase() || '';
+
+        // Skincare & Basics
+        if (lowerName.includes('skincare') || lowerName.includes('العناية بالبشرة'))
+            return { label: t('skincare') || 'Skincare', icon: 'face-woman-outline', provider: MaterialCommunityIcons };
+
+        // Acne
+        if (lowerName.includes('acne') || lowerName.includes('حب الشباب'))
+            return { label: t('acne'), icon: 'bandage-outline', provider: Ionicons };
+
+        // Makeup
+        if (lowerName.includes('makeup') || lowerName.includes('المكياج'))
+            return { label: t('makeup'), icon: 'eye-outline', provider: Ionicons };
+
+        // Hair
+        if (lowerName.includes('hair') || lowerName.includes('الشعر'))
+            return { label: t('hair'), icon: 'hair-dryer-outline', provider: MaterialCommunityIcons };
+
+        // Body
+        if (lowerName.includes('body') || lowerName.includes('الجسم'))
+            return { label: t('body'), icon: 'emoticon-outline', provider: MaterialCommunityIcons };
+
+        // Serum
+        if (lowerName.includes('serum') || lowerName.includes('السيروم'))
+            return { label: t('serum'), icon: 'water-outline', provider: Ionicons };
+
+        // Sun Care
+        if (lowerName.includes('sun') || lowerName.includes('شمس'))
+            return { label: t('suncare'), icon: 'sunny-outline', provider: Ionicons };
+
+        // Value Sets
+        if (lowerName.includes('set') || lowerName.includes('مجموعات'))
+            return { label: t('sets'), icon: 'gift-outline', provider: Ionicons };
+
+        // Nails
+        if (lowerName.includes('nail') || lowerName.includes('أظافر'))
+            return { label: t('nail') || 'Nail', icon: 'bottle-tonic-plus-outline', provider: MaterialCommunityIcons };
+
+        // Cleansers
+        if (lowerName.includes('cleanser') || lowerName.includes('منظفات'))
+            return { label: t('cleansers'), icon: 'water-outline', provider: MaterialCommunityIcons };
+
+        // Masks
+        if (lowerName.includes('mask') || lowerName.includes('ماسك'))
+            return { label: t('masks'), icon: 'face-mask-outline', provider: MaterialCommunityIcons };
+
+        // Creams & Moisturizers
+        if (lowerName.includes('cream') || lowerName.includes('moist') || lowerName.includes('مرطب'))
+            return { label: t('moisturizers'), icon: 'lotion-outline', provider: MaterialCommunityIcons };
+
+        // Eye Care
+        if (lowerName.includes('eye') || lowerName.includes('عين'))
+            return { label: t('eyeCare'), icon: 'eye-circle-outline', provider: MaterialCommunityIcons };
+
+        // Lip Care
+        if (lowerName.includes('lip') || lowerName.includes('شفاه'))
+            return { label: t('lipCare'), icon: 'lipstick', provider: MaterialCommunityIcons };
+
+        // Toner
+        if (lowerName.includes('toner') || lowerName.includes('تونر'))
+            return { label: t('toners'), icon: 'bottle-wine-outline', provider: MaterialCommunityIcons };
+
+        // Anti-Aging
+        if (lowerName.includes('aging') || lowerName.includes('تجاعيد'))
+            return { label: t('antiAging'), icon: 'auto-fix', provider: MaterialCommunityIcons };
+
+        return { label: catName, icon: 'dots-grid', provider: MaterialCommunityIcons };
+    };
 
     // Render category chip
-    const renderCategory = ({ item }) => (
-        <TouchableOpacity
-            style={[
-                styles.categoryChip,
-                selectedCategory === item.id && styles.categoryChipActive,
-            ]}
-            onPress={() => handleCategorySelect(item.id)}
-        >
-            <Text style={[
-                styles.categoryChipText,
-                selectedCategory === item.id && styles.categoryChipTextActive,
-            ]}>
-                {item.name}
-            </Text>
-        </TouchableOpacity>
-    );
+    const renderCategory = ({ item }) => {
+        const isAll = item.id === null;
+        const details = isAll ? { label: t('all'), icon: 'apps-outline', provider: Ionicons } : getCategoryDetails(item.name);
+        const IconProvider = details.provider || Ionicons;
+
+        return (
+            <TouchableOpacity
+                style={styles.categoryCircleWrapper}
+                onPress={() => handleCategorySelect(item.id)}
+            >
+                <View
+                    style={[
+                        styles.categoryCircle,
+                        selectedCategory === item.id && styles.categoryCircleActive,
+                    ]}
+                >
+                    <IconProvider
+                        name={details.icon}
+                        size={22}
+                        color={selectedCategory === item.id ? '#fff' : (isDark ? theme.primary : '#1A1A1A')}
+                    />
+                </View>
+                <Text style={[
+                    styles.categoryCircleLabel,
+                    { color: selectedCategory === item.id ? theme.primary : theme.textSecondary },
+                    selectedCategory === item.id && { fontWeight: '700' }
+                ]}>
+                    {details.label}
+                </Text>
+            </TouchableOpacity>
+        );
+    };
 
     // Render header with categories
     const ListHeader = () => (
         <View style={styles.listHeader}>
             {/* Categories Filter */}
             <FlatList
-                data={[{ id: null, name: 'الكل' }, ...categories]}
+                data={[{ id: null, name: t('all') }, ...categories]}
                 renderItem={renderCategory}
                 keyExtractor={(item) => (item.id || 'all').toString()}
                 horizontal
@@ -207,68 +327,75 @@ export default function ProductsScreen() {
                         style={[styles.viewModeBtn, viewMode === 'grid' && styles.viewModeBtnActive]}
                         onPress={() => setViewMode('grid')}
                     >
-                        <Ionicons name="grid" size={18} color={viewMode === 'grid' ? '#fff' : COLORS.textMuted} />
+                        <Ionicons name="grid" size={18} color={viewMode === 'grid' ? '#fff' : theme.textMuted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.viewModeBtn, viewMode === 'brand' && styles.viewModeBtnActive]}
                         onPress={() => setViewMode('brand')}
                     >
-                        <Ionicons name="list" size={18} color={viewMode === 'brand' ? '#fff' : COLORS.textMuted} />
+                        <Ionicons name="list" size={18} color={viewMode === 'brand' ? '#fff' : theme.textMuted} />
                     </TouchableOpacity>
                 </View>
 
                 <Text style={styles.resultsCount}>
-                    {products.length} منتج
+                    {t('itemCount', { count: products.length })}
                 </Text>
             </View>
         </View>
     );
 
-    if (loading && products.length === 0) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.loadingText}>جاري تحميل المنتجات...</Text>
-            </View>
-        );
-    }
+    // No full screen loader. Show skeletons in list.
+    // if (loading && products.length === 0) {
+    //     return (
+    //         <View style={styles.loadingContainer}>
+    //             <ActivityIndicator size="large" color={theme.primary} />
+    //             <Text style={styles.loadingText}>{t('loadingProducts')}</Text>
+    //         </View>
+    //     );
+    // }
 
     return (
         <View style={styles.container}>
             {/* Header with Search */}
             <SearchHeader
-                title="المنتجات"
+                title={t('productsTitle')}
                 onSearch={handleSearch}
                 onCartPress={() => router.push('/cart')}
+                onNotificationPress={() => router.push('/notifications')}
+                onMenuPress={() => router.push('/profile')}
                 cartCount={cartItems.length}
             />
 
             {viewMode === 'grid' ? (
                 // Grid View
                 <FlatList
-                    data={products}
-                    renderItem={renderProduct}
-                    keyExtractor={(item) => item.id.toString()}
+                    key="grid-view"
+                    data={loading && products.length === 0 ? [1, 2, 3, 4, 5, 6] : products}
+                    renderItem={loading && products.length === 0 ?
+                        () => <View style={styles.gridItem}><ProductSkeleton style={{ width: '100%' }} /></View> :
+                        renderProduct
+                    }
+                    keyExtractor={(item, index) => loading && products.length === 0 ? index.toString() : item.id.toString()}
                     numColumns={2}
                     ListHeaderComponent={ListHeader}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="cube-outline" size={60} color={COLORS.textMuted} />
-                            <Text style={styles.emptyText}>لا توجد منتجات</Text>
+                            <Ionicons name="cube-outline" size={60} color={theme.textMuted} />
+                            <Text style={styles.emptyText}>{t('noProducts')}</Text>
                         </View>
                     }
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={handleRefresh}
-                            tintColor={COLORS.primary}
+                            tintColor={theme.primary}
                         />
                     }
                     onEndReached={handleLoadMore}
                     onEndReachedThreshold={0.5}
                     ListFooterComponent={
                         hasMore && products.length > 0 ? (
-                            <ActivityIndicator style={styles.footerLoader} color={COLORS.primary} />
+                            <ActivityIndicator style={styles.footerLoader} color={theme.primary} />
                         ) : null
                     }
                     contentContainerStyle={styles.listContent}
@@ -277,6 +404,7 @@ export default function ProductsScreen() {
             ) : (
                 // Brand/Category View
                 <FlatList
+                    key="brand-view"
                     data={Object.entries(getProductsByCategory())}
                     renderItem={({ item: [catId, data] }) => (
                         <BrandSection
@@ -297,7 +425,7 @@ export default function ProductsScreen() {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={handleRefresh}
-                            tintColor={COLORS.primary}
+                            tintColor={theme.primary}
                         />
                     }
                     contentContainerStyle={styles.listContent}
@@ -307,81 +435,96 @@ export default function ProductsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme, isDark) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: theme.background,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: COLORS.background,
+        backgroundColor: theme.background,
     },
     loadingText: {
-        marginTop: SPACING.md,
-        color: COLORS.textSecondary,
+        marginTop: 16,
+        color: theme.textSecondary,
         fontSize: 14,
     },
     listHeader: {
-        paddingTop: SPACING.md,
+        paddingTop: 16,
     },
     categoriesList: {
-        paddingHorizontal: SPACING.md,
-        gap: SPACING.sm,
+        paddingHorizontal: 16,
+        paddingBottom: 10,
     },
-    categoryChip: {
-        backgroundColor: COLORS.card,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: SPACING.sm,
-        borderRadius: RADIUS.xl,
+    categoryCircleWrapper: {
+        alignItems: 'center',
+        marginRight: 18,
+        width: 60,
+    },
+    categoryCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
         borderWidth: 1,
-        borderColor: COLORS.border,
-        marginRight: SPACING.sm,
+        borderColor: theme.border,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    categoryChipActive: {
-        backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
+    categoryCircleActive: {
+        backgroundColor: theme.primary,
+        borderColor: theme.primary,
+        shadowColor: theme.primary,
+        shadowOpacity: 0.3,
     },
-    categoryChipText: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
+    categoryCircleLabel: {
+        marginTop: 6,
+        fontSize: 10,
+        textAlign: 'center',
         fontWeight: '500',
-    },
-    categoryChipTextActive: {
-        color: '#fff',
+        textTransform: 'uppercase',
+        letterSpacing: 0.2,
     },
     filterRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: SPACING.md,
-        paddingVertical: SPACING.md,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
     },
     viewModeToggle: {
         flexDirection: 'row',
-        backgroundColor: COLORS.border,
-        borderRadius: RADIUS.sm,
+        backgroundColor: isDark ? 'rgba(30,30,40,0.6)' : 'rgba(255,255,255,0.8)',
+        borderRadius: 8,
         padding: 2,
+        borderWidth: 1,
+        borderColor: theme.border,
     },
     viewModeBtn: {
-        padding: SPACING.sm,
-        borderRadius: RADIUS.xs,
+        padding: 8,
+        borderRadius: 6,
     },
     viewModeBtnActive: {
-        backgroundColor: COLORS.primary,
+        backgroundColor: theme.primary,
     },
     resultsCount: {
         fontSize: 14,
-        color: COLORS.textSecondary,
+        color: theme.textSecondary,
     },
     listContent: {
-        paddingBottom: SPACING.xxl,
+        paddingBottom: 48,
     },
     row: {
         justifyContent: 'space-between',
-        paddingHorizontal: SPACING.md,
-        marginBottom: SPACING.sm,
+        paddingHorizontal: 16,
+        marginBottom: 8,
     },
     gridItem: {
         width: (width - 48) / 2,
@@ -389,14 +532,14 @@ const styles = StyleSheet.create({
     emptyContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: SPACING.xxl,
+        paddingVertical: 48,
     },
     emptyText: {
-        marginTop: SPACING.md,
-        color: COLORS.textMuted,
+        marginTop: 16,
+        color: theme.textMuted,
         fontSize: 16,
     },
     footerLoader: {
-        paddingVertical: SPACING.lg,
+        paddingVertical: 24,
     },
 });
