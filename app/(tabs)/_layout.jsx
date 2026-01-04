@@ -6,9 +6,11 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
 import { useCart } from '../context/CartContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function TabsLayout() {
   const { getCartCount } = useCart();
+  const { t } = useLanguage();
   const cartCount = getCartCount();
 
   return (
@@ -24,16 +26,25 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'الرئيسية',
+          title: t('home'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
+        name="products"
+        options={{
+          title: t('products'),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="favorites"
         options={{
-          title: 'المفضلة',
+          title: t('favorites'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="heart" size={size} color={color} />
           ),
@@ -42,7 +53,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'السلة',
+          title: t('cart'),
           tabBarIcon: ({ color, size }) => (
             <View>
               <Ionicons name="cart" size={size} color={color} />
@@ -58,7 +69,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'حسابي',
+          title: t('profile'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

@@ -30,6 +30,7 @@ import api from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useCartAnimation } from '../context/CartAnimationContext';
 import { useFavorites } from '../context/FavoritesContext';
+import { useLanguage } from '../context/LanguageContext';
 
 // Components
 import SearchHeader from '../components/SearchHeader';
@@ -44,7 +45,7 @@ const { width, height } = Dimensions.get('window');
 // ============================================
 // 🎬 CINEMATIC HERO SECTION
 // ============================================
-const CinematicHero = ({ onShopNow }) => {
+const CinematicHero = ({ onShopNow, t, isArabic }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -64,40 +65,33 @@ const CinematicHero = ({ onShopNow }) => {
   }, []);
 
   return (
-    <View style={styles.heroContainer}>
-      <Video
-        source={{ uri: 'https://kataraa.com/wp-content/uploads/2025/07/a-little-magic-for-your-skin-1-1.mp4' }}
-        style={styles.heroVideo}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping
-        isMuted
-      />
+    <View style={styles.heroSection}>
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
-        style={styles.heroOverlay}
-      />
-      <Animated.View
-        style={[
-          styles.heroContent,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-        ]}
+        colors={['#1a1a2e', '#16213e', '#0f3460']}
+        style={styles.heroGradient}
       >
-        <Text style={styles.heroBadge}>✨ Korean Skincare</Text>
-        <Text style={styles.heroTitle}>A Little Magic{'\n'}For Your Skin</Text>
-        <Text style={styles.heroSubtitle}>سحر لبشرتك</Text>
-        <TouchableOpacity style={styles.heroButton} onPress={onShopNow}>
-          <LinearGradient
-            colors={['#667eea', '#764ba2']}
-            style={styles.heroButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Text style={styles.heroButtonText}>تسوقي الآن</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
+        <Animated.View
+          style={[
+            styles.heroContent,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
+          <Text style={styles.heroBadge}>✨ Korean Skincare</Text>
+          <Text style={styles.heroTitle}>{isArabic ? 'سحر لبشرتك' : 'Magic For Your Skin'}</Text>
+          <Text style={styles.heroSubtitle}>{isArabic ? 'منتجات كورية أصلية' : 'Authentic K-Beauty'}</Text>
+          <TouchableOpacity style={styles.heroButton} onPress={onShopNow}>
+            <LinearGradient
+              colors={['#667eea', '#764ba2']}
+              style={styles.heroButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.heroButtonText}>{t('shopNow')}</Text>
+              <Ionicons name={isArabic ? 'arrow-back' : 'arrow-forward'} size={18} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </LinearGradient>
     </View>
   );
 };
@@ -105,22 +99,22 @@ const CinematicHero = ({ onShopNow }) => {
 // ============================================
 // 💎 SKIN TYPE SELECTOR (تسوقي حسب بشرتك)
 // ============================================
-const SkinTypeSection = ({ onSelect }) => {
+const SkinTypeSection = ({ onSelect, t, isArabic }) => {
   const skinTypes = [
-    { id: 'oily', name: 'البشرة الدهنية', icon: 'water', color: '#4FC3F7', emoji: '💧' },
-    { id: 'dry', name: 'البشرة الجافة', icon: 'leaf', color: '#AED581', emoji: '🍃' },
-    { id: 'mixed', name: 'البشرة المختلطة', icon: 'contrast', color: '#FFB74D', emoji: '⚖️' },
-    { id: 'sensitive', name: 'البشرة الحساسة', icon: 'flower', color: '#F48FB1', emoji: '🌸' },
+    { id: 'oily', name: isArabic ? 'البشرة الدهنية' : 'Oily Skin', icon: 'water', color: '#4FC3F7', emoji: '💧' },
+    { id: 'dry', name: isArabic ? 'البشرة الجافة' : 'Dry Skin', icon: 'leaf', color: '#AED581', emoji: '🍃' },
+    { id: 'mixed', name: isArabic ? 'البشرة المختلطة' : 'Combination', icon: 'contrast', color: '#FFB74D', emoji: '⚖️' },
+    { id: 'sensitive', name: isArabic ? 'البشرة الحساسة' : 'Sensitive', icon: 'flower', color: '#F48FB1', emoji: '🌸' },
   ];
 
   return (
     <View style={styles.skinTypeSection}>
       <View style={styles.sectionHeader}>
         <TouchableOpacity style={styles.viewAllBtn}>
-          <Text style={styles.viewAllText}>عرض الكل</Text>
-          <Ionicons name="arrow-back" size={16} color={COLORS.primary} />
+          <Text style={styles.viewAllText}>{t('viewAll')}</Text>
+          <Ionicons name={isArabic ? 'arrow-back' : 'arrow-forward'} size={16} color={COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.sectionTitle}>تسوقي حسب بشرتك 💎</Text>
+        <Text style={styles.sectionTitle}>{t('shopBySkin')} 💎</Text>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.skinTypeList}>
@@ -248,17 +242,17 @@ const CategoryGrid = ({ categories, onSelect }) => {
 // ============================================
 // 🌟 WHY SHOP WITH US
 // ============================================
-const WhyShopWithUs = () => {
+const WhyShopWithUs = ({ t, isArabic }) => {
   const features = [
-    { icon: 'shield-checkmark', title: 'منتجات مضمونة', desc: '100% أصلية' },
-    { icon: 'cube', title: 'تنوع واسع', desc: '+500 منتج' },
-    { icon: 'star', title: 'خبرة طويلة', desc: 'منذ 2019' },
-    { icon: 'car', title: 'توصيل سريع', desc: '24-48 ساعة' },
+    { icon: 'shield-checkmark', title: t('guaranteedProducts'), desc: t('original100') },
+    { icon: 'cube', title: t('wideVariety'), desc: t('products500') },
+    { icon: 'star', title: t('experience'), desc: t('since2019') },
+    { icon: 'car', title: t('fastDelivery'), desc: t('hours48') },
   ];
 
   return (
     <View style={styles.whySection}>
-      <Text style={styles.whyTitle}>لماذا تتسوقين معنا؟ 💜</Text>
+      <Text style={styles.whyTitle}>{t('whyShopWithUs')} 💜</Text>
       <View style={styles.whyGrid}>
         {features.map((f, i) => (
           <View key={i} style={styles.whyCard}>
@@ -282,6 +276,7 @@ export default function HomeScreen() {
   const { cartItems } = useCart();
   const { triggerAddToCart } = useCartAnimation();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { t, isArabic } = useLanguage();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -381,10 +376,10 @@ export default function HomeScreen() {
         }
       >
         {/* 🎬 Cinematic Hero */}
-        <CinematicHero onShopNow={() => router.push('/products')} />
+        <CinematicHero onShopNow={() => router.push('/products')} t={t} isArabic={isArabic} />
 
         {/* 💎 Shop by Skin Type */}
-        <SkinTypeSection onSelect={(type) => router.push(`/products?skin=${type.id}`)} />
+        <SkinTypeSection onSelect={(type) => router.push(`/products?skin=${type.id}`)} t={t} isArabic={isArabic} />
 
         {/* 🔥 Flash Sale Banner */}
         <FlashSaleBanner onPress={() => router.push('/products?sale=true')} />

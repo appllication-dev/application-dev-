@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '../context/LanguageContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
@@ -30,10 +32,8 @@ export default function ProductCardSoko({
     const imageUrl = item?.images?.[0]?.src || 'https://via.placeholder.com/200';
     const isOnSale = item?.on_sale && item?.regular_price && item?.sale_price;
     const isOutOfStock = item?.stock_status === 'outofstock';
-
-    const formatPrice = (price) => {
-        return `${parseFloat(price || 0).toFixed(3)}`;
-    };
+    const { t } = useLanguage();
+    const { formatPrice } = useCurrency();
 
     const getDiscountPercent = () => {
         if (!isOnSale) return 0;
@@ -77,7 +77,7 @@ export default function ProductCardSoko({
                 {isOutOfStock && (
                     <View style={styles.soldOutOverlay}>
                         <View style={styles.soldOutBadge}>
-                            <Text style={styles.soldOutText}>Sold Out</Text>
+                            <Text style={styles.soldOutText}>{t('soldOut')}</Text>
                         </View>
                     </View>
                 )}
@@ -93,7 +93,7 @@ export default function ProductCardSoko({
                             style={styles.addToCartGradient}
                         >
                             <Ionicons name="add" size={16} color="#fff" />
-                            <Text style={styles.addToCartText}>Add to Cart</Text>
+                            <Text style={styles.addToCartText}>{t('addToCart')}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 )}
@@ -111,15 +111,15 @@ export default function ProductCardSoko({
                     {isOnSale ? (
                         <>
                             <Text style={styles.salePrice}>
-                                BHD {formatPrice(item.sale_price)}
+                                {formatPrice(item.sale_price)}
                             </Text>
                             <Text style={styles.originalPrice}>
-                                BHD {formatPrice(item.regular_price)}
+                                {formatPrice(item.regular_price)}
                             </Text>
                         </>
                     ) : (
                         <Text style={styles.price}>
-                            BHD {formatPrice(item.price)}
+                            {formatPrice(item.price)}
                         </Text>
                     )}
                 </View>
@@ -194,21 +194,22 @@ const styles = StyleSheet.create({
     addToCartBtn: {
         position: 'absolute',
         bottom: SPACING.sm,
-        left: SPACING.sm,
         right: SPACING.sm,
-        borderRadius: RADIUS.md,
+        borderRadius: 18,
         overflow: 'hidden',
     },
     addToCartGradient: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: SPACING.sm,
-        gap: 4,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
     },
     addToCartText: {
+        display: 'none', // Hide text, show only icon
         color: '#fff',
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
     },
     infoContainer: {

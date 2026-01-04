@@ -10,6 +10,8 @@ import { CartProvider } from './context/CartContext';
 import { FavoritesProvider } from './context/FavoritesContext';
 import { CheckoutProvider } from './context/CheckoutContext';
 import { CartAnimationProvider } from './context/CartAnimationContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
@@ -24,21 +26,27 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <CartProvider>
-      <CartAnimationProvider>
-        <FavoritesProvider>
-          <CheckoutProvider>
-            <StatusBar style="light" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="product/[id]" />
-              <Stack.Screen name="checkout/shipping" />
-              <Stack.Screen name="checkout/payment" />
-              <Stack.Screen name="checkout/success" />
-            </Stack>
-          </CheckoutProvider>
-        </FavoritesProvider>
-      </CartAnimationProvider>
-    </CartProvider>
+    <LanguageProvider>
+      <CurrencyProvider>
+        <CartProvider>
+          <CartAnimationProvider>
+            <FavoritesProvider>
+              <CheckoutProvider>
+                <StatusBar style="light" />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="product/[id]" />
+                  <Stack.Screen name="checkout" />
+                  <Stack.Screen name="checkout/shipping" />
+                  <Stack.Screen name="checkout/payment" />
+                  <Stack.Screen name="checkout/success" />
+                  <Stack.Screen name="admin" />
+                </Stack>
+              </CheckoutProvider>
+            </FavoritesProvider>
+          </CartAnimationProvider>
+        </CartProvider>
+      </CurrencyProvider>
+    </LanguageProvider>
   );
 }

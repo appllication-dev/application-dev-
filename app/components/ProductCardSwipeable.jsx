@@ -17,6 +17,8 @@ import {
     ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../context/LanguageContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../theme/colors';
 
 const CARD_WIDTH = 150;
@@ -32,6 +34,7 @@ export default function ProductCardSwipeable({
 }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const scrollRef = useRef(null);
+    const { t } = useLanguage();
 
     // Get images - ALWAYS create 2 slides for the dots to show
     const productImages = item?.images || [];
@@ -43,8 +46,7 @@ export default function ProductCardSwipeable({
 
     const isOnSale = item?.on_sale && item?.regular_price && item?.sale_price;
     const isOutOfStock = item?.stock_status === 'outofstock';
-
-    const formatPrice = (price) => `BHD ${parseFloat(price || 0).toFixed(3)}`;
+    const { formatPrice } = useCurrency();
 
     // Handle scroll to update active dot
     const handleScroll = (event) => {
@@ -100,7 +102,7 @@ export default function ProductCardSwipeable({
                     {isOutOfStock && (
                         <View style={styles.soldOutOverlay}>
                             <View style={styles.soldOutBadge}>
-                                <Text style={styles.soldOutText}>Sold Out</Text>
+                                <Text style={styles.soldOutText}>{t('soldOut')}</Text>
                             </View>
                         </View>
                     )}
@@ -126,7 +128,7 @@ export default function ProductCardSwipeable({
                     onPress={() => onAddToCart?.(item)}
                 >
                     <Ionicons name="add" size={14} color="#fff" />
-                    <Text style={styles.addToCartText}>Add to Cart</Text>
+                    <Text style={styles.addToCartText}>{t('addToCart')}</Text>
                 </TouchableOpacity>
             ) : (
                 <View style={[styles.addToCartBtn, styles.soldOutCartBtn]}>
